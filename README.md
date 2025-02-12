@@ -4,7 +4,9 @@
   <img src="https://raw.githubusercontent.com/autodesk/xlb/main/assets/logo-transparent.png" alt="" width="300">
 </p>
 
-# XLB: A Differentiable Massively Parallel Lattice Boltzmann Library in Python for Physics-Based Machine Learning
+# XLB: A Differentiable Massively Parallel Lattice Boltzmann Library in Python for Physics-Based Machine Learning - Now with Particles
+
+This fork of XLB is a platform for adding granular particle collisions to a differentiable LBM method. 
 
 🎉 **Exciting News!** 🎉 XLB version 0.2.0 has been released, featuring a complete rewrite of the library and introducing support for the NVIDIA Warp backend! 
 XLB can now be installed via pip: `pip install xlb`.
