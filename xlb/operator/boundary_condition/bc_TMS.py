@@ -110,6 +110,8 @@ class TammMothSmithBC(BoundaryCondition):
         _f_vec = wp.vec(self.velocity_set.q, dtype=self.compute_dtype)
         _u_vec = wp.vec(self.velocity_set.d, dtype=self.compute_dtype)
         _u_wall = _u_vec(self.u[0], self.u[1], self.u[2]) if _d == 3 else _u_vec(self.u[0], self.u[1])
+        _sphere_c = wp.vec3i(self.sphere_c[0], self.sphere_c[1], self.sphere_c[2]) if _d == 3 else wp.vec2i(self.sphere_c[0], self.sphere_c[1])
+        _sphere_r = self.compute_dtype(self.sphere_r)
         # diagonal = wp.vec3i(0, 3, 5) if _d == 3 else wp.vec2i(0, 2)
 
         # Construct the functionals for this BC
@@ -134,8 +136,8 @@ class TammMothSmithBC(BoundaryCondition):
             
             f_local = f_post
             _f_nbr = _f_vec()
-            u_target = _u_vec(0.0, 0.0, 0.0) if _d == 3 else _u_vec(0.0, 0.0)
-            num_missing = 0
+            u_target = _u_vec(0.0, 0.0, 0.0) #if _d == 3 else _u_vec(0.0, 0.0)
+            num_missing = self.compute_dtype(0)
             one = self.compute_dtype(1.0)
             for l in range(_q):
                 # If the mask is missing then take the opposite index
@@ -154,28 +156,27 @@ class TammMothSmithBC(BoundaryCondition):
                     _, u_f = self.macroscopic.warp_functional(_f_nbr)
 
                     # Record the number of missing directions
-                    num_missing += 1
+                    num_missing += 1.
 
                     # Interpolation weights computed for a sphere. 
-                    c_hat =_c/(_c[0,l]**2.0+_c[1,l]**2.0+_c[2,l]**2.0)**0.5
-                    weight = -(c_hat*self.compute_dtype(index-self.sphere_c))+wp.sqrt((c_hat*(index-self.sphere_c))**2.0-(wp.length(index-self.sphere_c)**2.0 - self.sphere_r**2.0))
-                    weight = weight/(_c[0,l]**2.0+_c[1,l]**2.0+_c[2,l]**2.0)**0.5
+                    c_hat =_u_vec(0.,0.,0.)
+                    weight =0.0
+                    for d in range(_d):
+                        c_hat[d] = self.compute_dtype(_c[d,l])/wp.sqrt(self.compute_dtype(_c[0,l])**2.0+self.compute_dtype(_c[1,l])**2.0+self.compute_dtype(_c[2,l])**2.0)
+                        weight += -(c_hat[d]*self.compute_dtype(index[d]-_sphere_c[d]))+wp.sqrt((c_hat[d]*self.compute_dtype(index[d]-_sphere_c[d]))**2.0-(self.compute_dtype(index[d]-_sphere_c[d])**2.0 - _sphere_r**2.0))
+                    weight = weight/wp.sqrt(self.compute_dtype(_c[0,l]*_c[0,l]+_c[1,l]*_c[1,l]+_c[2,l]*_c[2,l]))
                     # Given "weights", "u_w" (input to the BC) and "u_f" S(computed from f_aux), compute "u_target" as per Eq (14)
                     for d in range(_d):
                         u_target[d] += (weight * u_f[d] + _u_wall[d]) / (one + weight)
 
-                    # Use differentiable interpolated BB to find f_missing:
-                    f_post[l] = ((one - weight) * f_post[_opp_indices[l]] + weight * (f_pre[l] + f_pre[_opp_indices[l]])) / (one + weight)
-                    
                     # Add contribution due to moving_wall to f_missing 
                     cu = self.compute_dtype(0.0)
                     for d in range(_d):
-                        if _c[d, l] == 1:
-                            cu += _u_wall[d]
-                        elif _c[d, l] == -1:
-                            cu -= _u_wall[d]
+                        cu += _u_wall[d]* self.compute_dtype(_c[d,l])
                     cu *= self.compute_dtype(-6.0) * _w[l]
-                    f_post[l] += cu 
+                    # Use differentiable interpolated BB to find f_missing:
+                    f_post[l] = ((one - weight) * f_post[_opp_indices[l]] + weight * (f_pre[l] + f_pre[_opp_indices[l]])) / (one + weight) + cu
+                    
 
             # Compute rho_target = \sum(f_ibb) based on these values
             for d in range(_d):
@@ -185,12 +186,12 @@ class TammMothSmithBC(BoundaryCondition):
             for l in range(_q):
                 # If the mask is missing then take the opposite index
                 if missing_mask[l] == wp.uint8(1):
-                    f_local[l] = self.equilibrium(rho_target,u_target)[l]
+                    f_local[l] = self.equilibrium.warp_functional(rho_target,u_target)[l]
             
             rho_local, u_local = self.macroscopic.warp_functional(f_local)
 
             # Compute TMS
-            f_post = f_post + self.equilibrium(rho_target,u_target) - self.equilibrium(rho_local,u_local)
+            f_post = f_post + self.equilibrium.warp_functional(rho_target,u_target) - self.equilibrium.warp_functional(rho_local,u_local)
             return f_post
 
         functional = functional_method
