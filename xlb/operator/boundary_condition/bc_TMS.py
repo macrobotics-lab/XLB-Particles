@@ -28,7 +28,7 @@ from xlb.operator.boundary_condition.boundary_condition import (
 
 class TammMothSmithBC(BoundaryCondition):
     """
-    Purpose: Modificaiton of existing bc_grads_approximation.py to make it more in line with the local Tamm Moth Smith Boundary Condition 
+    Purpose: Modificaiton of existing bc_grads_approximation.py to make it more in line with the local Tamm Moth Smith Boundary Condition
     [1] S. Chikatamarla and I. Karlin, "Entropic lattice Boltzmann Methods for turbulent flow simulations:
         Boundary Conditions", Physica A. 392 (2013).
 
@@ -41,9 +41,9 @@ class TammMothSmithBC(BoundaryCondition):
         compute_backend: ComputeBackend = None,
         indices=None,
         mesh_vertices=None,
-        u_wall = None,
-        sphere_c = None,
-        sphere_r = None,
+        u_wall=None,
+        sphere_c=None,
+        sphere_r=None,
     ):
         # TODO: the input velocity must be suitably stored elesewhere when mesh is moving.
 
@@ -58,7 +58,7 @@ class TammMothSmithBC(BoundaryCondition):
             precision_policy,
             compute_backend,
             indices,
-            mesh_vertices,        
+            mesh_vertices,
         )
 
         # Instantiate the operator for computing macroscopic values
@@ -90,13 +90,17 @@ class TammMothSmithBC(BoundaryCondition):
         #     if mesh_velocity_function is not None:
         #         # mesh is moving and/or deforming
 
-        assert self.compute_backend == ComputeBackend.WARP, "This BC is currently only implemented with the Warp backend!"
+        assert (
+            self.compute_backend == ComputeBackend.WARP
+        ), "This BC is currently only implemented with the Warp backend!"
 
     @Operator.register_backend(ComputeBackend.JAX)
     @partial(jit, static_argnums=(0))
     def jax_implementation(self, f_pre, f_post, bc_mask, missing_mask):
         # TODO
-        raise NotImplementedError(f"Operation {self.__class__.__name} not implemented in JAX!")
+        raise NotImplementedError(
+            f"Operation {self.__class__.__name} not implemented in JAX!"
+        )
         return
 
     def _construct_warp(self):
@@ -109,10 +113,39 @@ class TammMothSmithBC(BoundaryCondition):
         _opp_indices = self.velocity_set.opp_indices
         _f_vec = wp.vec(self.velocity_set.q, dtype=self.compute_dtype)
         _u_vec = wp.vec(self.velocity_set.d, dtype=self.compute_dtype)
-        _u_wall = _u_vec(self.u[0], self.u[1], self.u[2]) if _d == 3 else _u_vec(self.u[0], self.u[1])
-        _sphere_c = wp.vec3i(self.sphere_c[0], self.sphere_c[1], self.sphere_c[2]) if _d == 3 else wp.vec2i(self.sphere_c[0], self.sphere_c[1])
+        _u_wall = (
+            _u_vec(self.u[0], self.u[1], self.u[2])
+            if _d == 3
+            else _u_vec(self.u[0], self.u[1])
+        )
+        _sphere_c = (
+            wp.vec3i(self.sphere_c[0], self.sphere_c[1], self.sphere_c[2])
+            if _d == 3
+            else wp.vec2i(self.sphere_c[0], self.sphere_c[1])
+        )
         _sphere_r = self.compute_dtype(self.sphere_r)
         # diagonal = wp.vec3i(0, 3, 5) if _d == 3 else wp.vec2i(0, 2)
+
+        @wp.func
+        def calculate_weight(
+            u: Any,
+            o: Any,
+            c: Any,
+            r: Any,
+            l: Any,
+        ): 
+            # Compute the weight associated with any given direction 
+
+            un = -wp.vec3(self.compute_dtype(u[0,l]),self.compute_dtype(u[1,l]),self.compute_dtype(u[2,l]))
+            on = wp.vec3(self.compute_dtype(o[0]),self.compute_dtype(o[1]),self.compute_dtype(o[2]))
+            cn = wp.vec3(self.compute_dtype(c[0]),self.compute_dtype(c[1]),self.compute_dtype(c[2]))
+
+            u_hat = un/wp.length(un)
+            a = wp.dot(u_hat,(on-cn))
+            delta = a**2.0-(wp.length(on-cn)**2.0-r**2.0)
+            
+            d= wp.min(wp.abs(-a+wp.sqrt(delta)), wp.abs(-a - wp.sqrt(delta)))
+            return d/wp.length(un)
 
         # Construct the functionals for this BC
         @wp.func
@@ -132,11 +165,10 @@ class TammMothSmithBC(BoundaryCondition):
             # 3) Compute rho_bb from interpolated bb
             # 4) Compute rho_s from u_w
             # 5) Compute feq using feq = self.equilibrium(rho_target, u_target) for missing pops
-            # 6) Apply TMS for all pops 
-            
-            f_local = f_post
+            # 6) Apply TMS for all pops
+
             _f_nbr = _f_vec()
-            u_target = _u_vec(0.0, 0.0, 0.0) #if _d == 3 else _u_vec(0.0, 0.0)
+            u_target = _u_vec(0.0, 0.0, 0.0)  # if _d == 3 else _u_vec(0.0, 0.0)
             num_missing = self.compute_dtype(0)
             one = self.compute_dtype(1.0)
             for l in range(_q):
@@ -150,49 +182,47 @@ class TammMothSmithBC(BoundaryCondition):
                         for d in range(_d):
                             fluid_nbr_index[d] = index[d] + _c[d, l]
                         # The following is the post-collision values of the fluid neighbor cell
-                        _f_nbr[ll] = self.compute_dtype(f_0[ll, fluid_nbr_index[0], fluid_nbr_index[1], fluid_nbr_index[2]])
+                        _f_nbr[ll] = self.compute_dtype(
+                            f_0[
+                                ll,
+                                fluid_nbr_index[0],
+                                fluid_nbr_index[1],
+                                fluid_nbr_index[2],
+                            ]
+                        )
 
                     # Compute the velocity vector at the fluid neighbouring cells
                     _, u_f = self.macroscopic.warp_functional(_f_nbr)
 
                     # Record the number of missing directions
-                    num_missing += 1.
+                    num_missing += 1.0
 
-                    # Interpolation weights computed for a sphere. 
-                    c_hat =_u_vec(0.,0.,0.)
-                    weight =0.0
-                    for d in range(_d):
-                        c_hat[d] = self.compute_dtype(_c[d,l])/wp.sqrt(self.compute_dtype(_c[0,l])**2.0+self.compute_dtype(_c[1,l])**2.0+self.compute_dtype(_c[2,l])**2.0)
-                        weight += -(c_hat[d]*self.compute_dtype(index[d]-_sphere_c[d]))+wp.sqrt((c_hat[d]*self.compute_dtype(index[d]-_sphere_c[d]))**2.0-(self.compute_dtype(index[d]-_sphere_c[d])**2.0 - _sphere_r**2.0))
-                    weight = weight/wp.sqrt(self.compute_dtype(_c[0,l]*_c[0,l]+_c[1,l]*_c[1,l]+_c[2,l]*_c[2,l]))
+                    # Interpolation weights computed for a sphere.
+                    weight = calculate_weight(_c,index,_sphere_c,_sphere_r,l)
                     # Given "weights", "u_w" (input to the BC) and "u_f" S(computed from f_aux), compute "u_target" as per Eq (14)
                     for d in range(_d):
                         u_target[d] += (weight * u_f[d] + _u_wall[d]) / (one + weight)
 
-                    # Add contribution due to moving_wall to f_missing 
+                    # Add contribution due to moving_wall to f_missing
                     cu = self.compute_dtype(0.0)
                     for d in range(_d):
-                        cu += _u_wall[d]* self.compute_dtype(_c[d,l])
+                        cu += _u_wall[d] * self.compute_dtype(_c[d, l])
                     cu *= self.compute_dtype(-6.0) * _w[l]
                     # Use differentiable interpolated BB to find f_missing:
-                    f_post[l] = ((one - weight) * f_post[_opp_indices[l]] + weight * (f_pre[l] + f_pre[_opp_indices[l]])) / (one + weight) + cu
-                    
+                    f_post[l] = (
+                        (one - weight) * f_post[_opp_indices[l]]
+                        + weight * (f_pre[l] + f_pre[_opp_indices[l]])
+                    ) / (one + weight) + cu
 
-            # Compute rho_target = \sum(f_ibb) based on these values
-            for d in range(_d):
-                u_target[d] /= num_missing
-            rho_target = self.zero_moment.warp_functional(f_post) 
+                    # Compute rho_target = \sum(f_ibb) based on these values
+                    for d in range(_d):
+                        u_target[d] /= num_missing
+                    rho_target = self.zero_moment.warp_functional(f_post)
 
-            for l in range(_q):
-                # If the mask is missing then take the opposite index
-                if missing_mask[l] == wp.uint8(1):
-                    f_local[l] = self.equilibrium.warp_functional(rho_target,u_target)[l]
-            
-            rho_local, u_local = self.macroscopic.warp_functional(f_local)
+                    # Compute TMS
+                    f_post = self.equilibrium.warp_functional(rho_target, u_target)
 
-            # Compute TMS
-            f_post = f_post + self.equilibrium.warp_functional(rho_target,u_target) - self.equilibrium.warp_functional(rho_local,u_local)
-            return f_post
+                return f_post
 
         functional = functional_method
 

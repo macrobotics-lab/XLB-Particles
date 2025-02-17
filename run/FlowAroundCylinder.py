@@ -29,7 +29,7 @@ velocity_set = xlb.velocity_set.D3Q19(
     precision_policy=precision_policy, compute_backend=compute_backend
 )
 u_max = 0.04
-num_steps = 10000
+num_steps = 100000
 post_process_interval = 1000
 
 # Initialize XLB
@@ -119,9 +119,8 @@ bc_left = RegularizedBC("velocity", profile=bc_profile(), indices=inlet)
 # bc_left = RegularizedBC("velocity", prescribed_value=(u_max, 0.0, 0.0), indices=inlet)
 bc_walls = FullwayBounceBackBC(indices=walls)
 bc_outlet = ExtrapolationOutflowBC(indices=outlet)
-bc_sphere = TammMothSmithBC(
-    indices=sphere, sphere_c=sphere_center, sphere_r=sphere_radius, u_wall=(0, 0, 0)
-)
+bc_sphere = TammMothSmithBC(indices=sphere, sphere_c=sphere_center, sphere_r=sphere_radius, u_wall=(0, 0, 0))
+#bc_sphere = HalfwayBounceBackBC(indices=sphere)
 boundary_conditions = [bc_walls, bc_left, bc_outlet, bc_sphere]
 
 # Set up Momentum Transfer for Force Calculation
@@ -171,7 +170,6 @@ def plot_drag_coefficient(time_steps, drag_coefficients):
             )
             plt.plot(time_steps_np[window - 1 :], ma, label=label)
 
-    plt.ylim(-1.0, 1.0)
     plt.legend()
     plt.xlabel("Time step")
     plt.ylabel("Drag coefficient")
