@@ -9,3 +9,4 @@ from xlb.operator.boundary_condition.bc_zouhe import ZouHeBC
 from xlb.operator.boundary_condition.bc_regularized import RegularizedBC
 from xlb.operator.boundary_condition.bc_extrapolation_outflow import ExtrapolationOutflowBC
 from xlb.operator.boundary_condition.bc_grads_approximation import GradsApproximationBC
+from xlb.operator.boundary_condition.bc_TMS import TammMothSmithBC
