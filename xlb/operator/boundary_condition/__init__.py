@@ -4,6 +4,7 @@ from xlb.operator.boundary_condition.boundary_condition_registry import Boundary
 from xlb.operator.boundary_condition.bc_equilibrium import EquilibriumBC
 from xlb.operator.boundary_condition.bc_do_nothing import DoNothingBC
 from xlb.operator.boundary_condition.bc_halfway_bounce_back import HalfwayBounceBackBC
+from xlb.operator.boundary_condition.bc_halfway_bounce_back_sphere import InterpolatedBounceBackSphereBC
 from xlb.operator.boundary_condition.bc_fullway_bounce_back import FullwayBounceBackBC
 from xlb.operator.boundary_condition.bc_zouhe import ZouHeBC
 from xlb.operator.boundary_condition.bc_regularized import RegularizedBC

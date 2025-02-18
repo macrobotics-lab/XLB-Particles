@@ -9,6 +9,8 @@ from xlb.operator.boundary_condition import (
     RegularizedBC,
     ExtrapolationOutflowBC,
     TammMothSmithBC,
+    InterpolatedBounceBackSphereBC,
+    GradsApproximationBC,
 )
 from xlb.operator.force import MomentumTransfer
 from xlb.operator.macroscopic import Macroscopic
@@ -20,15 +22,18 @@ import time
 import matplotlib.pyplot as plt
 
 # -------------------------- Simulation Setup --------------------------
-
-omega = 1.6
 grid_shape = (512 // 2, 128 // 2, 128 // 2)
+Re = 100.0
+u_max = 0.04
+sphere_radius = grid_shape[1] // 12
+visc = u_max * sphere_radius / Re
+omega = 1.0 / (3.0 * visc + 0.5)
 compute_backend = ComputeBackend.WARP
 precision_policy = PrecisionPolicy.FP32FP32
 velocity_set = xlb.velocity_set.D3Q19(
     precision_policy=precision_policy, compute_backend=compute_backend
 )
-u_max = 0.04
+
 num_steps = 100000
 post_process_interval = 1000
 
@@ -119,8 +124,8 @@ bc_left = RegularizedBC("velocity", profile=bc_profile(), indices=inlet)
 # bc_left = RegularizedBC("velocity", prescribed_value=(u_max, 0.0, 0.0), indices=inlet)
 bc_walls = FullwayBounceBackBC(indices=walls)
 bc_outlet = ExtrapolationOutflowBC(indices=outlet)
-bc_sphere = TammMothSmithBC(indices=sphere, sphere_c=sphere_center, sphere_r=sphere_radius, u_wall=(0, 0, 0))
-#bc_sphere = HalfwayBounceBackBC(indices=sphere)
+bc_sphere = InterpolatedBounceBackSphereBC(indices=sphere, sphere_c=sphere_center, sphere_r=sphere_radius, u_wall=(0, 0, 0))
+#bc_sphere = GradsApproximationBC(indices=sphere)
 boundary_conditions = [bc_walls, bc_left, bc_outlet, bc_sphere]
 
 # Set up Momentum Transfer for Force Calculation
@@ -144,7 +149,7 @@ macro = Macroscopic(
 )
 
 
-def plot_drag_coefficient(time_steps, drag_coefficients):
+def plot_drag_coefficient(time_steps, drag_coefficients,i,meta):
     """
     Plot the drag coefficient with various moving averages.
 
@@ -174,7 +179,7 @@ def plot_drag_coefficient(time_steps, drag_coefficients):
     plt.xlabel("Time step")
     plt.ylabel("Drag coefficient")
     plt.title("Drag Coefficient Over Time with Moving Averages")
-    plt.savefig("drag_coefficient_ma.png")
+    plt.savefig("drag_coefficient_ma{}.png".format(i))
     plt.close()
 
 
@@ -185,6 +190,8 @@ def post_process(
     drag_coefficients,
     lift_coefficients,
     time_steps,
+    i,
+    meta,
 ):
     # Convert to JAX array if necessary
     if not isinstance(f_current, jnp.ndarray):
@@ -206,11 +213,11 @@ def post_process(
     }
 
     # Save the u_magnitude slice at the mid y-plane
-    save_fields_vtk(fields, timestep=step)
+    """save_fields_vtk(fields, timestep=step)
     save_image(fields["u_magnitude"][:, grid_shape[1] // 2, :], timestep=step)
     print(
         f"Post-processed step {step}: Saved u_magnitude slice at y={grid_shape[1] // 2}"
-    )
+    )"""
 
     # Compute lift and drag
     boundary_force = momentum_transfer(f_0, f_1, bc_mask, missing_mask)
@@ -223,25 +230,33 @@ def post_process(
     time_steps.append(step)
 
     # Plot drag coefficient
-    plot_drag_coefficient(time_steps, drag_coefficients)
+    plot_drag_coefficient(time_steps, drag_coefficients,i,meta)
 
 
 # -------------------------- Simulation Loop --------------------------
 # Initialize Lists to Store Coefficients and Time Steps
-time_steps = []
-drag_coefficients = []
-lift_coefficients = []
+n = 100
+Rerange = np.geomspace(100,10000,n)
+visc = u_max * sphere_radius / Rerange
+omega = 1.0 / (3.0 * visc + 0.5)
+meta = []
 
-start_time = time.time()
-for step in range(num_steps):
-    f_0, f_1 = stepper(f_0, f_1, bc_mask, missing_mask, omega, step)
-    f_0, f_1 = f_1, f_0  # Swap the buffers
 
-    if step % post_process_interval == 0 or step == num_steps - 1:
-        post_process(step, f_0, drag_coefficients,lift_coefficients,time_steps,)
-        end_time = time.time()
-        elapsed = end_time - start_time
-        print(
-            f"Completed step {step}. Time elapsed for {post_process_interval} steps: {elapsed:.6f} seconds."
-        )
-        start_time = time.time()
+for i in range(n):
+    time_steps = []
+    drag_coefficients = []
+    lift_coefficients = []
+
+    start_time = time.time()
+    for step in range(num_steps):
+        f_0, f_1 = stepper(f_0, f_1, bc_mask, missing_mask, float(omega[i]), step)
+        f_0, f_1 = f_1, f_0  # Swap the buffers
+
+        if step % post_process_interval == 0 or step == num_steps - 1:
+            post_process(step, f_0, drag_coefficients,lift_coefficients,time_steps,i,meta)
+            end_time = time.time()
+            elapsed = end_time - start_time
+            print(
+                f"Completed step {step}. Time elapsed for {post_process_interval} steps: {elapsed:.6f} seconds."
+            )
+            start_time = time.time()
