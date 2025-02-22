@@ -34,7 +34,7 @@ velocity_set = xlb.velocity_set.D3Q19(
     precision_policy=precision_policy, compute_backend=compute_backend
 )
 
-num_steps = 100000
+num_steps = 20000
 post_process_interval = 1000
 
 # Initialize XLB
@@ -213,11 +213,11 @@ def post_process(
     }
 
     # Save the u_magnitude slice at the mid y-plane
-    """save_fields_vtk(fields, timestep=step)
+    """     save_fields_vtk(fields, timestep=step)
     save_image(fields["u_magnitude"][:, grid_shape[1] // 2, :], timestep=step)
     print(
         f"Post-processed step {step}: Saved u_magnitude slice at y={grid_shape[1] // 2}"
-    )"""
+    ) """
 
     # Compute lift and drag
     boundary_force = momentum_transfer(f_0, f_1, bc_mask, missing_mask)
@@ -228,15 +228,14 @@ def post_process(
     drag_coefficients.append(cd)
     lift_coefficients.append(cl)
     time_steps.append(step)
-
     # Plot drag coefficient
     plot_drag_coefficient(time_steps, drag_coefficients,i,meta)
 
-
+    return np.mean(drag_coefficients)
 # -------------------------- Simulation Loop --------------------------
 # Initialize Lists to Store Coefficients and Time Steps
-n = 100
-Rerange = np.geomspace(100,10000,n)
+n = 10
+Rerange = np.geomspace(1,200,n)
 visc = u_max * sphere_radius / Rerange
 omega = 1.0 / (3.0 * visc + 0.5)
 meta = []
@@ -248,15 +247,27 @@ for i in range(n):
     lift_coefficients = []
 
     start_time = time.time()
-    for step in range(num_steps):
+    for step in range(int(num_steps)):
         f_0, f_1 = stepper(f_0, f_1, bc_mask, missing_mask, float(omega[i]), step)
         f_0, f_1 = f_1, f_0  # Swap the buffers
 
         if step % post_process_interval == 0 or step == num_steps - 1:
-            post_process(step, f_0, drag_coefficients,lift_coefficients,time_steps,i,meta)
+            cd = post_process(step, f_0, drag_coefficients,lift_coefficients,time_steps,i,meta)
             end_time = time.time()
             elapsed = end_time - start_time
             print(
                 f"Completed step {step}. Time elapsed for {post_process_interval} steps: {elapsed:.6f} seconds."
             )
             start_time = time.time()
+    meta.append(cd)
+
+plt.figure(figsize=(12, 8))
+plt.semilogx(Rerange, meta)
+plt.xlabel("Re")
+plt.ylabel("Drag coefficient")
+plt.savefig("drag_coefficient_re.png".format(i))
+plt.close()
+
+meta = np.array(meta)
+
+np.savez('./drag.npz',Rerange,meta)

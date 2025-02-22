@@ -23,7 +23,6 @@ class InterpolatedBounceBackSphereBC(BoundaryCondition):
     """
     Halfway Bounce-back boundary condition for a lattice Boltzmann method simulation.
 
-    TODO: Implement moving boundary conditions for this
     """
 
     def __init__(
