@@ -9,7 +9,7 @@ from xlb.compute_backend import ComputeBackend
 from xlb.operator.operator import Operator
 
 
-class MeshBoundaryMasker(Operator):
+class MeshDistanceBoundaryMasker(Operator):
     """
     Operator for creating a boundary missing_mask from an STL file
     """
@@ -50,9 +50,10 @@ class MeshBoundaryMasker(Operator):
         # Make constants for warp
         _c_float = self.velocity_set.c_float
         _q = wp.constant(self.velocity_set.q)
-        _c = self.velocity_set.c
         _opp_indices = self.velocity_set.opp_indices
-        
+        _c = self.velocity_set.c
+
+
         @wp.func
         def index_to_position(index: wp.vec3i):
             # position of the point
@@ -157,6 +158,7 @@ class MeshBoundaryMasker(Operator):
             id_number: wp.int32,
             bc_mask: wp.array4d(dtype=wp.uint8),
             missing_mask: wp.array4d(dtype=wp.bool),
+            f_dist: wp.array4d(dtype=wp.float32),
         ):
             # get index
             i, j, k = wp.tid()
@@ -167,6 +169,7 @@ class MeshBoundaryMasker(Operator):
             # position of the point
             pos_bc_cell = index_to_position(index)
             half = wp.vec3(0.5, 0.5, 0.5)
+
 
             if mesh_voxel_intersect(mesh_id=mesh_id, low=pos_bc_cell - half):
                 # Make solid voxel
@@ -182,21 +185,8 @@ class MeshBoundaryMasker(Operator):
                         # Set the boundary id and missing_mask
                         bc_mask[0, push_index[0], push_index[1], push_index[2]] = wp.uint8(id_number)
                         missing_mask[l, push_index[0], push_index[1], push_index[2]] = True
-
-            # if mesh_voxel_intersect(mesh_id=mesh_id, low=pos_bc_cell - half):
-            #     # Make solid voxel
-            #     bc_mask[0, index[0], index[1], index[2]] = wp.uint8(255)
-            # else:
-            #     # Find the fractional distance to the mesh in each direction
-            #     for l in range(1, _q):
-            #         _dir = wp.vec3f(_c_float[0, l], _c_float[1, l], _c_float[2, l])
-
-            #         # Check to see if this neighbor is solid - this is super inefficient TODO: make it way better
-            #         if mesh_voxel_intersect(mesh_id=mesh_id, low=pos_bc_cell + _dir - half):
-            #             # We know we have a solid neighbor
-            #             # Set the boundary id and missing_mask
-            #             bc_mask[0, index[0], index[1], index[2]] = wp.uint8(id_number)
-            #             missing_mask[_opp_indices[l], index[0], index[1], index[2]] = True
+                        # Find the distance to the closest element in the mesh
+                        f_dist[l,push_index[0], push_index[1], push_index[2]] = wp.mesh_query_ray(mesh_id= mesh_id, origin = wp.vec3f(push_index[0], push_index[1], push_index[2]), direction = -_dir, max_distance = 1.5).t
 
         return None, kernel
 
@@ -206,6 +196,7 @@ class MeshBoundaryMasker(Operator):
         bc,
         bc_mask,
         missing_mask,
+        f_dist,
     ):
         assert bc.mesh_vertices is not None, f'Please provide the mesh vertices for {bc.__class__.__name__} BC using keyword "mesh_vertices"!'
         assert bc.indices is None, f"Please use IndicesBoundaryMasker operator if {bc.__class__.__name__} is imposed on known indices of the grid!"
@@ -245,8 +236,9 @@ class MeshBoundaryMasker(Operator):
                 id_number,
                 bc_mask,
                 missing_mask,
+                f_dist,
             ],
             dim=bc_mask.shape[1:],
         )
 
-        return bc_mask, missing_mask
+        return bc_mask, missing_mask, f_dist
