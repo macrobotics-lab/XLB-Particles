@@ -32,8 +32,11 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
         compute_backend: ComputeBackend = None,
         indices=None,
         mesh_vertices=None,
+        mesh_id=None,
     ):
         self.mesh_vertices=mesh_vertices
+        self.mesh_id = wp.uint64(mesh_id)
+
 
         # Call the parent constructor
         super().__init__(
@@ -67,16 +70,7 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
         _opp_indices = self.velocity_set.opp_indices
         _c_float = self.velocity_set.c_float
         _w = self.velocity_set.w
-
-        mesh_indices = jnp.arange(self.mesh_vertices.shape[0])
-        mesh = wp.Mesh(
-            points=wp.array(self.mesh_vertices, dtype=wp.vec3),
-            indices=wp.array(mesh_indices, dtype=int),
-            velocities=wp.zeros((mesh_indices.shape[0], 3), dtype=wp.vec3),
-        )
-
-        mesh_id = wp.uint64(mesh.id)
-
+        mesh_id = self.mesh_id
 
         # Construct the functional for this BC
         @wp.func

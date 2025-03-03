@@ -20,7 +20,7 @@ wp.clear_kernel_cache()
 wp.config.mode = "debug"
 wp.config.verify_cuda = True
 # Grid parameters
-grid_size_x, grid_size_y, grid_size_z = 256//8, 128//8, 128//8
+grid_size_x, grid_size_y, grid_size_z = 512//2, 128//2, 128//2
 grid_shape = (grid_size_x, grid_size_y, grid_size_z)
 
 # Simulation Configuration
@@ -81,13 +81,21 @@ mesh_vertices = mesh_vertices
 shift = np.array([grid_shape[0] / 4, (grid_shape[1] - mesh_extents[1]) / 2, (grid_shape[2] - mesh_extents[2])/2])
 car_vertices = mesh_vertices + shift
 car_cross_section = np.prod(mesh_extents[1:])
+
+mesh_indices = jnp.arange(car_vertices.shape[0])
+
+mesh = wp.Mesh(
+    points=wp.array(car_vertices, dtype=wp.vec3),
+    indices=wp.array(mesh_indices, dtype=int),
+    velocities=wp.zeros((mesh_indices.shape[0], 3), dtype=wp.vec3),
+        )
  
 
 bc_left = RegularizedBC("velocity", prescribed_value=(wind_speed, 0.0, 0.0), indices=inlet)
 bc_walls = FullwayBounceBackBC(indices=walls)
 bc_do_nothing = ExtrapolationOutflowBC(indices=outlet)
 #bc_car = HalfwayBounceBackBC(mesh_vertices=car_vertices)
-bc_car = InterpolatedBounceBackMeshBC(mesh_vertices=car_vertices)
+bc_car = InterpolatedBounceBackMeshBC(mesh_vertices=car_vertices,mesh_id=mesh.id)
 boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_car]
 
 
