@@ -17,7 +17,7 @@ from xlb.operator.stepper import Stepper
 from xlb.operator.boundary_condition.boundary_condition import ImplementationStep
 from xlb.operator.boundary_condition.boundary_condition_registry import boundary_condition_registry
 from xlb.operator.collision import ForcedCollision
-from xlb.operator.boundary_masker import IndicesBoundaryMasker, MeshBoundaryMasker, MeshDistanceBoundaryMasker
+from xlb.operator.boundary_masker import IndicesBoundaryMasker, MeshBoundaryMasker
 from xlb.helper import check_bc_overlaps
 from xlb.helper.nse_solver import create_nse_fields
 
@@ -83,14 +83,14 @@ class IncompressibleNavierStokesStepper(Stepper):
             wp.copy(f_1, f_0)
 
         # Process boundary conditions and update masks
-        bc_mask, missing_mask,f_0 = self._process_boundary_conditions(self.boundary_conditions, bc_mask, missing_mask, f_0) #TODO: Check if f_0 or f_1
+        bc_mask, missing_mask = self._process_boundary_conditions(self.boundary_conditions, bc_mask, missing_mask)
         # Initialize auxiliary data if needed
         f_0, f_1 = self._initialize_auxiliary_data(self.boundary_conditions, f_0, f_1, bc_mask, missing_mask)
 
         return f_0, f_1, bc_mask, missing_mask
 
     @classmethod
-    def _process_boundary_conditions(cls, boundary_conditions, bc_mask, missing_mask,f_dist):
+    def _process_boundary_conditions(cls, boundary_conditions, bc_mask, missing_mask):
         """Process boundary conditions and update boundary masks."""
         # Check for boundary condition overlaps
         check_bc_overlaps(boundary_conditions, DefaultConfig.velocity_set.d, DefaultConfig.default_backend)
@@ -108,25 +108,15 @@ class IncompressibleNavierStokesStepper(Stepper):
             bc_mask, missing_mask = indices_masker(bc_with_indices, bc_mask, missing_mask)
         # Process mesh-based boundary conditions for 3D
         if DefaultConfig.velocity_set.d == 3 and bc_with_vertices:
+            mesh_masker = MeshBoundaryMasker(
+                velocity_set=DefaultConfig.velocity_set,
+                precision_policy=DefaultConfig.default_precision_policy,
+                compute_backend=DefaultConfig.default_backend,
+            )
             for bc in bc_with_vertices:
-                if bc.needs_mesh_distance:
-                    mesh_masker = MeshDistanceBoundaryMasker(
-                        velocity_set=DefaultConfig.velocity_set,
-                        precision_policy=DefaultConfig.default_precision_policy,
-                        compute_backend=DefaultConfig.default_backend,
-                    )
-                    bc_mask, missing_mask,f_dist = mesh_masker(bc, bc_mask, missing_mask,f_dist)
-                    return bc_mask, missing_mask,f_dist
-                else: 
-                    mesh_masker = MeshBoundaryMasker(
-                        velocity_set=DefaultConfig.velocity_set,
-                        precision_policy=DefaultConfig.default_precision_policy,
-                        compute_backend=DefaultConfig.default_backend,
-                    )
-                    bc_mask, missing_mask = mesh_masker(bc, bc_mask, missing_mask)
-                    return bc_mask, missing_mask
+                bc_mask, missing_mask = mesh_masker(bc, bc_mask, missing_mask)
 
-
+        return bc_mask, missing_mask
 
     @staticmethod
     def _initialize_auxiliary_data(boundary_conditions, f_0, f_1, bc_mask, missing_mask):

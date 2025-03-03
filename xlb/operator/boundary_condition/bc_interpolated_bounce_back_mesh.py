@@ -31,16 +31,10 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
         precision_policy: PrecisionPolicy = None,
         compute_backend: ComputeBackend = None,
         indices=None,
-        mesh_vertices=None,        
-        u_wall=None,
-        sphere_c=None,
-        sphere_r=None,
+        mesh_vertices=None,
     ):
-        self.u = u_wall
-        self.sphere_c = sphere_c
-        self.sphere_r = sphere_r
-        self.mesh_vertices = mesh_vertices
-        
+        self.mesh_vertices=mesh_vertices
+
         # Call the parent constructor
         super().__init__(
             ImplementationStep.STREAMING,
@@ -59,7 +53,9 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
     def jax_implementation(self, f_pre, f_post, bc_mask, missing_mask):
         boundary = bc_mask == self.id
         new_shape = (self.velocity_set.q,) + boundary.shape[1:]
-        boundary = lax.broadcast_in_dim(boundary, new_shape, tuple(range(self.velocity_set.d + 1)))
+        boundary = lax.broadcast_in_dim(
+            boundary, new_shape, tuple(range(self.velocity_set.d + 1))
+        )
         return jnp.where(
             jnp.logical_and(missing_mask, boundary),
             f_pre[self.velocity_set.opp_indices],
@@ -69,28 +65,18 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
     def _construct_warp(self):
         # Set local constants
         _opp_indices = self.velocity_set.opp_indices
-        _c = self.velocity_set.c
+        _c_float = self.velocity_set.c_float
         _w = self.velocity_set.w
 
-        #Weight function for a mesh using raytracing
+        mesh_indices = jnp.arange(self.mesh_vertices.shape[0])
+        mesh = wp.Mesh(
+            points=wp.array(self.mesh_vertices, dtype=wp.vec3),
+            indices=wp.array(mesh_indices, dtype=int),
+            velocities=wp.zeros((mesh_indices.shape[0], 3), dtype=wp.vec3),
+        )
 
-        @wp.func
-        def calculate_weight(
-            mesh_id: wp.uint64,
-            origin: Any,
-            direction: Any,
-            i: Any,
-        ):
-            # Compute the weight associated with any given direction
-            query = wp.mesh_query_ray(mesh_id=mesh_id,start=origin,dir=direction[:,i],max_t = 1.5)
-            if query.result:
-                weight = query.t
-                face = query.face
-                u = query.u
-                v = query.v
-                return weight,face,u,v
-            else :
-                raise ValueError("No intersection found with Mesh for the given direction")
+        mesh_id = wp.uint64(mesh.id)
+
 
         # Construct the functional for this BC
         @wp.func
@@ -103,20 +89,35 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
             f_pre: Any,
             f_post: Any,
         ):
-            mesh_indices = range(self.mesh_vertices.shape[0]) # May have to be a wp array to get the shape inside a wp function 
-            mesh = wp.Mesh(
-            points=wp.array(self.mesh_vertices, dtype=wp.vec3),
-            indices=wp.array(mesh_indices, dtype=int),
-            )
             # Post-streaming values are only modified at missing direction
             _f = f_post
             for l in range(self.velocity_set.q):
                 # If the mask is missing then take the opposite index
                 if missing_mask[l] == wp.uint8(1):
-                    # Get the pre-streaming distribution function in oppisite direction
-                    weight,face,u,v = calculate_weight(mesh.id,index,_c, _opp_indices[l])
-                    wall_velocity = wp.mesh_eval_velocity(id=mesh.id,face=face,bary_u=u,bary_v=v)
-                    _f[l] = 2.0*weight/(1.0+2.0*weight)*f_post[l] + 1.0/(1.0+2.0*weight)*f_pre[_opp_indices[l]] + 6.0*weight/(1.0-2.0*weight)*_w[l]*wp.dot(wall_velocity,_c[:,l])
+                    # Get the pre-streaming distribution function in opposite direction
+                    dir = wp.vec3f(
+                        _c_float[0, _opp_indices[l]],
+                        _c_float[1, _opp_indices[l]],
+                        _c_float[2, _opp_indices[l]],
+                    )
+                    start = wp.vec3f(
+                        wp.float32(index[0]), wp.float32(index[1]), wp.float32(index[2])
+                    )
+                    length = wp.length(dir)
+
+                    t = float(0.0)      # hit distance along ray
+                    u = float(0.0)      # hit face barycentric u
+                    v = float(0.0)      # hit face barycentric v
+                    sign = float(0.0)   # hit face sign
+                    n = wp.vec3()       # hit face normal
+                    f = int(0)          # hit face index
+                    
+                    wp.mesh_query_ray(mesh_id, start, dir, length,t,u,v,sign,n,f)
+                    _f[l] = (
+                                2.0 * t/ (1.0 + 2.0 * t) * f_post[l]
+                                + 1.0 / (1.0 + 2.0 * t) * f_pre[_opp_indices[l]]
+                                + 6.0* t/ (1.0 - 2.0 * t)* _w[l]* wp.dot(wp.mesh_eval_velocity(mesh_id, f, u, v), dir)
+                            )
 
             return _f
 

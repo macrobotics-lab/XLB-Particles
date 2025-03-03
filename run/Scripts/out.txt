@@ -1,0 +1,966 @@
+Warp 1.5.1 initialized:
+   CUDA Toolkit 12.6, Driver 12.7
+   Devices:
+     "cpu"      : "x86_64"
+     "cuda:0"   : "NVIDIA GeForce RTX 3060" (12 GiB, sm_86, mempool enabled)
+   Kernel cache:
+     /home/omar/.cache/warp/1.5.1
+
+==================================================
+
+Simulation Configuration:
+Grid size: 32 x 16 x 16
+Backend: ComputeBackend.WARP
+Velocity set: D3Q27
+Precision policy: PrecisionPolicy.FP32FP32
+Prescribed velocity: 0.02
+Reynolds number: 50000.0
+Max iterations: 100000
+
+==================================================
+
+registered bc RegularizedBC_8782425444061 with id 1
+Evaluated static command: _d == 3 = True
+Evaluated static command: _d == 3 = True
+registered bc FullwayBounceBackBC_8782425444082 with id 2
+Evaluated static command: _d == 3 = True
+registered bc ExtrapolationOutflowBC_8782425493997 with id 3
+Evaluated static command: self.velocity_set.d == 3 = True
+Evaluated static command: _d == 3 = True
+registered bc InterpolatedBounceBackMeshBC_8782425169206 with id 4
+Evaluated static command: _d == 3 = True
+Evaluated static command: len(self.boundary_conditions) = 4
+Evaluated static command: len(self.boundary_conditions) = 4
+Evaluated static command: self.velocity_set.d == 3 = True
+kernel: QuadraticEquilibrium___construct_warp__locals__kernel dim: (32, 16, 16) inputs: [<warp.types.array object at 0x7fcd137a7b80>, <warp.types.array object at 0x7fcd137a7c10>, <warp.types.array object at 0x7fcd13784250>] outputs: [] device: cuda:0
+Module xlb.operator.equilibrium.quadratic_equilibrium 93c24fe load on device 'cuda:0' ...
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable feq during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/equilibrium/quadratic_equilibrium.py:58: this may not be a differentiable operation.
+        feq[l] = rho * _w[l] * (self.compute_dtype(1.0) + cu * (self.compute_dtype(1.0) + self.compute_dtype(0.5) * cu) - usqr)
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+    Compile CUDA ...
+    Compile CUDA took 596.23 ms
+Module xlb.operator.equilibrium.quadratic_equilibrium 93c24fe load on device 'cuda:0' took 613.58 ms  (compiled)
+kernel: IndicesBoundaryMasker___construct_warp__locals__kernel dim: 2312 inputs: [<warp.types.array object at 0x7fcd1263c490>, <warp.types.array object at 0x7fcd1263c430>, <warp.types.array object at 0x7fcd1263d4e0>, <warp.types.array object at 0x7fcd137a7c40>, <warp.types.array object at 0x7fcd137a6080>] outputs: [] device: cuda:0
+Module xlb.operator.boundary_masker.indices_boundary_masker 71a98c0 load on device 'cuda:0' ...
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+    Compile CUDA ...
+    Compile CUDA took 353.67 ms
+Module xlb.operator.boundary_masker.indices_boundary_masker 71a98c0 load on device 'cuda:0' took 366.45 ms  (compiled)
+kernel: MeshBoundaryMasker___construct_warp__locals__kernel dim: (32, 16, 16) inputs: [47250547712, 4, <warp.types.array object at 0x7fcd137a7c40>, <warp.types.array object at 0x7fcd137a6080>] outputs: [] device: cuda:0
+Module xlb.operator.boundary_masker.mesh_boundary_masker 6e4be13 load on device 'cuda:0' ...
+Warning: fixed-size loop count of 26 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+    Compile CUDA ...
+default_program(100): warning #550-D: variable "var_18" was set but never used
+      bool var_18;
+           ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+default_program(105): warning #177-D: variable "adj_2" was declared but never referenced
+      bool adj_2 = {};
+           ^
+
+default_program(108): warning #177-D: variable "adj_5" was declared but never referenced
+      bool adj_5 = {};
+           ^
+
+default_program(111): warning #177-D: variable "adj_8" was declared but never referenced
+      bool adj_8 = {};
+           ^
+
+default_program(114): warning #177-D: variable "adj_11" was declared but never referenced
+      bool adj_11 = {};
+           ^
+
+default_program(117): warning #177-D: variable "adj_14" was declared but never referenced
+      bool adj_14 = {};
+           ^
+
+default_program(120): warning #177-D: variable "adj_17" was declared but never referenced
+      bool adj_17 = {};
+           ^
+
+default_program(562): warning #550-D: variable "adj_73" was set but never used
+          bool adj_73 = {};
+               ^
+
+default_program(3230): warning #550-D: variable "var_156" was set but never used
+      bool var_156;
+           ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+default_program(3231): warning #177-D: variable "var_157" was declared but never referenced
+      const bool var_157 = false;
+                 ^
+
+default_program(3235): warning #177-D: variable "adj_1" was declared but never referenced
+      wp::float32 adj_1 = {};
+                  ^
+
+default_program(3236): warning #177-D: variable "adj_2" was declared but never referenced
+      bool adj_2 = {};
+           ^
+
+default_program(3242): warning #177-D: variable "adj_8" was declared but never referenced
+      bool adj_8 = {};
+           ^
+
+default_program(3243): warning #177-D: variable "adj_9" was declared but never referenced
+      bool adj_9 = {};
+           ^
+
+default_program(3244): warning #177-D: variable "adj_10" was declared but never referenced
+      bool adj_10 = {};
+           ^
+
+default_program(3263): warning #177-D: variable "adj_29" was declared but never referenced
+      bool adj_29 = {};
+           ^
+
+default_program(3264): warning #177-D: variable "adj_30" was declared but never referenced
+      bool adj_30 = {};
+           ^
+
+default_program(3278): warning #177-D: variable "adj_44" was declared but never referenced
+      bool adj_44 = {};
+           ^
+
+default_program(3279): warning #177-D: variable "adj_45" was declared but never referenced
+      bool adj_45 = {};
+           ^
+
+default_program(3293): warning #177-D: variable "adj_59" was declared but never referenced
+      bool adj_59 = {};
+           ^
+
+default_program(3294): warning #177-D: variable "adj_60" was declared but never referenced
+      bool adj_60 = {};
+           ^
+
+default_program(3311): warning #177-D: variable "adj_77" was declared but never referenced
+      bool adj_77 = {};
+           ^
+
+default_program(3312): warning #177-D: variable "adj_78" was declared but never referenced
+      bool adj_78 = {};
+           ^
+
+default_program(3326): warning #177-D: variable "adj_92" was declared but never referenced
+      bool adj_92 = {};
+           ^
+
+default_program(3327): warning #177-D: variable "adj_93" was declared but never referenced
+      bool adj_93 = {};
+           ^
+
+default_program(3341): warning #177-D: variable "adj_107" was declared but never referenced
+      bool adj_107 = {};
+           ^
+
+default_program(3342): warning #177-D: variable "adj_108" was declared but never referenced
+      bool adj_108 = {};
+           ^
+
+default_program(3359): warning #177-D: variable "adj_125" was declared but never referenced
+      bool adj_125 = {};
+           ^
+
+default_program(3360): warning #177-D: variable "adj_126" was declared but never referenced
+      bool adj_126 = {};
+           ^
+
+default_program(3374): warning #177-D: variable "adj_140" was declared but never referenced
+      bool adj_140 = {};
+           ^
+
+default_program(3375): warning #177-D: variable "adj_141" was declared but never r    Compile CUDA took 2127.44 ms
+Module xlb.operator.boundary_masker.mesh_boundary_masker 6e4be13 load on device 'cuda:0' took 2207.99 ms  (compiled)
+Evaluated static command: _d == 3 = True
+kernel: BoundaryCondition___construct_aux_data_init_kernel__locals__aux_data_init_kernel dim: (32, 16, 16) inputs: [<warp.types.array object at 0x7fcd13784250>, <warp.types.array object at 0x7fcd137a64d0>, <warp.types.array object at 0x7fcd137a7c40>, <warp.types.array object at 0x7fcd137a6080>] outputs: [] device: cuda:0
+Module xlb.operator.boundary_condition.boundary_condition 19a7c4e load on device 'cuda:0' ...
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable _f_pre during a dynamic for-loop in function "get_thread_data" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/helper_functions_bc.py:58: this may not be a differentiable operation.
+            _missing_mask[l] = wp.uint8(0)
+
+Warning: detected mutated variable _f_post during a dynamic for-loop in function "get_thread_data" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/helper_functions_bc.py:58: this may not be a differentiable operation.
+            _missing_mask[l] = wp.uint8(0)
+
+Warning: detected mutated variable _missing_mask during a dynamic for-loop in function "get_thread_data" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/helper_functions_bc.py:58: this may not be a differentiable operation.
+            _missing_mask[l] = wp.uint8(0)
+
+Warning: fixed-size loop count of 26 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable counter during a dynamic for-loop in function "aux_data_init_kernel" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/boundary_condition.py:159: this may not be a differentiable operation.
+                counter += 1
+
+    Compile CUDA ...
+    Compile CUDA took 659.57 ms
+Module xlb.operator.boundary_condition.boundary_condition 19a7c4e load on device 'cuda:0' took 670.95 ms  (compiled)
+kernel: IncompressibleNavierStokesStepper___construct_warp__locals__kernel dim: (32, 16, 16) inputs: [<warp.types.array object at 0x7fcd13784250>, <warp.types.array object at 0x7fcd137a64d0>, <warp.types.array object at 0x7fcd137a7c40>, <warp.types.array object at 0x7fcd137a6080>, 1.9998512110698965, 0] outputs: [] device: cuda:0
+Module xlb.operator.stepper.nse_stepper e4b5efd load on device 'cuda:0' ...
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable _f during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/stream/stream.py:80: this may not be a differentiable operation.
+        _f[l] = self.compute_dtype(f[l, pull_index[0], pull_index[1], pull_index[2]])
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable _f0_thread during a dynamic for-loop in function "get_thread_data" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/stepper/nse_stepper.py:247: this may not be a differentiable operation.
+            _missing_mask[l] = wp.uint8(0)
+
+Warning: detected mutated variable _f1_thread during a dynamic for-loop in function "get_thread_data" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/stepper/nse_stepper.py:247: this may not be a differentiable operation.
+            _missing_mask[l] = wp.uint8(0)
+
+Warning: detected mutated variable _missing_mask during a dynamic for-loop in function "get_thread_data" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/stepper/nse_stepper.py:247: this may not be a differentiable operation.
+            _missing_mask[l] = wp.uint8(0)
+
+Evaluated static command: len(self.boundary_conditions) = 4
+Evaluated static command: self.boundary_conditions[i].implementation_step == ImplementationStep.STREAMING = False
+Evaluated static command: self.boundary_conditions[i].implementation_step == ImplementationStep.COLLISION = True
+Evaluated static command: self.boundary_conditions[i].id = 2
+Evaluated static command: self.boundary_conditions[i].warp_functional = <Function FullwayBounceBackBC___construct_warp__locals__functional(index: typing.Any, timestep: typing.Any, missing_mask: typing.Any, f_0: typing.Any, f_1: typing.Any, f_pre: typing.Any, f_post: typing.Any)>
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable fliped_f during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/bc_fullway_bounce_back.py:71: this may not be a differentiable operation.
+        fliped_f[l] = f_pre[_opp_indices[l]]
+
+Evaluated static command: self.boundary_conditions[i].id in extrapolation_outflow_bc_ids = False
+Evaluated static command: self.boundary_conditions[i].implementation_step == ImplementationStep.STREAMING = True
+Evaluated static command: self.boundary_conditions[i].id = 1
+Evaluated static command: self.boundary_conditions[i].warp_functional = <Function RegularizedBC___construct_warp__locals__functional_velocity(index: typing.Any, timestep: typing.Any, missing_mask: typing.Any, f_0: typing.Any, f_1: typing.Any, f_pre: typing.Any, f_post: typing.Any)>
+Evaluated static command: _d == 3 = True
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable fsum_known during a dynamic for-loop in function "get_bc_fsum" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/helper_functions_bc.py:72: this may not be a differentiable operation.
+            fsum_middle += fpop[l]
+
+Warning: detected mutated variable fsum_middle during a dynamic for-loop in function "get_bc_fsum" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/helper_functions_bc.py:72: this may not be a differentiable operation.
+            fsum_middle += fpop[l]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable feq during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/equilibrium/quadratic_equilibrium.py:58: this may not be a differentiable operation.
+        feq[l] = rho * _w[l] * (self.compute_dtype(1.0) + cu * (self.compute_dtype(1.0) + self.compute_dtype(0.5) * cu) - usqr)
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable fpop during a dynamic for-loop in function "bounceback_nonequilibrium" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/helper_functions_bc.py:96: this may not be a differentiable operation.
+            fpop[l] = fpop[_opp_indices[l]] + feq[l] - feq[_opp_indices[l]]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable QiPi1 during a dynamic for-loop in function "regularize_fpop" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/helper_functions_bc.py:116: this may not be a differentiable operation.
+            QiPi1 += _qi[l, t] * PiNeq[t]
+
+Warning: detected mutated variable fpop during a dynamic for-loop in function "regularize_fpop" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/helper_functions_bc.py:121: this may not be a differentiable operation.
+        fpop[l] = feq[l] + fpop1
+
+Evaluated static command: self.boundary_conditions[i].implementation_step == ImplementationStep.COLLISION = False
+Evaluated static command: self.boundary_conditions[i].id in extrapolation_outflow_bc_ids = False
+Evaluated static command: self.boundary_conditions[i].implementation_step == ImplementationStep.STREAMING = True
+Evaluated static command: self.boundary_conditions[i].id = 3
+Evaluated static command: self.boundary_conditions[i].warp_functional = <Function ExtrapolationOutflowBC___construct_warp__locals__functional(index: typing.Any, timestep: typing.Any, missing_mask: typing.Any, f_0: typing.Any, f_1: typing.Any, _f_pre: typing.Any, _f_post: typing.Any)>
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable _f during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/bc_extrapolation_outflow.py:167: this may not be a differentiable operation.
+            _f[l] = _f_pre[_opp_indices[l]]
+
+Evaluated static command: self.boundary_conditions[i].implementation_step == ImplementationStep.COLLISION = False
+Evaluated static command: self.boundary_conditions[i].id in extrapolation_outflow_bc_ids = True
+Evaluated static command: self.boundary_conditions[i].id = 3
+Evaluated static command: self.boundary_conditions[i].update_bc_auxilary_data = <Function ExtrapolationOutflowBC___construct_warp__locals__update_bc_auxilary_data(index: typing.Any, timestep: typing.Any, missing_mask: typing.Any, f_0: typing.Any, f_1: typing.Any, _f_pre: typing.Any, _f_post: typing.Any)>
+Evaluated static command: self.velocity_set.d == 3 = True
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable _f during a dynamic for-loop in function "update_bc_auxilary_data" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/bc_extrapolation_outflow.py:194: this may not be a differentiable operation.
+            _f[_opp_indices[l]] = (self.compute_dtype(1.0) - sound_speed) * _f_pre[l] + sound_speed * f_aux
+
+Evaluated static command: self.boundary_conditions[i].implementation_step == ImplementationStep.STREAMING = True
+Evaluated static command: self.boundary_conditions[i].id = 4
+Evaluated static command: self.boundary_conditions[i].warp_functional = <Function InterpolatedBounceBackMeshBC___construct_warp__locals__functional(index: typing.Any, timestep: typing.Any, missing_mask: typing.Any, f_0: typing.Any, f_1: typing.Any, f_pre: typing.Any, f_post: typing.Any)>
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable _f during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/boundary_condition/bc_interpolated_bounce_back_mesh.py:125: this may not be a differentiable operation.
+                _f[l] = (
+
+Evaluated static command: self.boundary_conditions[i].implementation_step == ImplementationStep.COLLISION = False
+Evaluated static command: self.boundary_conditions[i].id in extrapolation_outflow_bc_ids = False
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable rho during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/zero_moment.py:26: this may not be a differentiable operation.
+        rho += f[l]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable u during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/first_moment.py:36: this may not be a differentiable operation.
+                u[d] -= f[l]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable feq during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/equilibrium/quadratic_equilibrium.py:58: this may not be a differentiable operation.
+        feq[l] = rho * _w[l] * (self.compute_dtype(1.0) + cu * (self.compute_dtype(1.0) + self.compute_dtype(0.5) * cu) - usqr)
+
+Evaluated static command: self.velocity_set.d == 3 = True
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable pi during a dynamic for-loop in function "functional" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/macroscopic/second_moment.py:77: this may not be a differentiable operation.
+            pi[d] += _cc[q, d] * fneq[q]
+
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Warning: detected mutated variable e_sum during a dynamic for-loop in function "entropic_scalar_product" at /home/omar/Thesis/00-warp/XLB-Particles/xlb/operator/collision/kbc.py:260: this may not be a differentiable operation.
+        e_sum += e[i]
+
+Evaluated static command: len(self.boundary_conditions) = 4
+Evaluated static command: self.boundary_conditions[i].needs_aux_recovery = False
+Evaluated static command: self.boundary_conditions[i].needs_aux_recovery = True
+Evaluated static command: self.boundary_conditions[i].id = 1
+Warning: fixed-size loop count of 26 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+Evaluated static command: self.boundary_conditions[i].needs_aux_recovery = False
+Evaluated static command: self.boundary_conditions[i].needs_aux_recovery = False
+Warning: fixed-size loop count of 27 is larger than the module 'max_unroll' limit of 16, will generate dynamic loop.
+    Compile CUDA ...
+eferenced
+      bool adj_141 = {};
+           ^
+
+default_program(3389): warning #177-D: variable "adj_155" was declared but never referenced
+      bool adj_155 = {};
+           ^
+
+default_program(3798): warning #177-D: variable "var_18" was declared but never referenced
+      const bool var_18 = true;
+                 ^
+
+default_program(3799): warning #177-D: variable "var_19" was declared but never referenced
+      const bool var_19 = false;
+                 ^
+
+default_program(71): warning #550-D: variable "var_36" was set but never used
+      bool var_36;
+           ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+default_program(77): warning #550-D: variable "var_42" was set but never used
+      bool var_42;
+           ^
+
+default_program(445): warning #177-D: variable "var_1" was declared but never referenced
+      const wp::int32 var_1 = 1;
+                      ^
+
+default_program(465): warning #177-D: variable "var_1" was declared but never referenced
+      const wp::int32 var_1 = 1;
+                      ^
+
+default_program(470): warning #177-D: variable "adj_1" was declared but never referenced
+      wp::int32 adj_1 = {};
+                ^
+
+default_program(668): warning #177-D: variable "adj_8" was declared but never referenced
+          wp::uint8 adj_8 = {};
+                    ^
+
+default_program(669): warning #177-D: variable "adj_9" was declared but never referenced
+          bool adj_9 = {};
+               ^
+
+default_program(686): warning #550-D: variable "adj_26" was set but never used
+          bool adj_26 = {};
+               ^
+
+default_program(687): warning #550-D: variable "adj_27" was set but never used
+          wp::int32 adj_27 = {};
+                    ^
+
+default_program(688): warning #550-D: variable "adj_28" was set but never used
+          bool adj_28 = {};
+               ^
+
+default_program(789): warning #550-D: variable "var_30" was set but never used
+      bool var_30;
+           ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+default_program(795): warning #550-D: variable "var_36" was set but never used
+      bool var_36;
+           ^
+
+default_program(1247): warning #177-D: variable "var_0" was declared but never referenced
+      const bool var_0 = true;
+                 ^
+
+default_program(1320): warning #177-D: variable "var_0" was declared but never referenced
+      const bool var_0 = true;
+                 ^
+
+default_program(1349): warning #177-D: variable "adj_0" was declared but never referenced
+      bool adj_0 = {};
+           ^
+
+default_program(1356): warning #550-D: variable "adj_7" was set but never used
+      bool adj_7 = {};
+           ^
+
+default_program(1368): warning #550-D: variable "adj_19" was set but never used
+      bool adj_19 = {};
+           ^
+
+default_program(1369): warning #550-D: variable "adj_20" was set but never used
+      bool adj_20 = {};
+           ^
+
+default_program(1581): warning #550-D: variable "var_25" was set but never used
+      wp::float32 var_25;
+                  ^
+
+default_program(2512): warning #550-D: variable "var_11" was set but never used
+      wp::float32 var_11;
+                  ^
+
+default_program(2527): warning #550-D: variable "var_26" was set but never used
+      wp::float32 var_26;
+                  ^
+
+default_program(2542): warning #550-D: variable "var_41" was set but never used
+      wp::float32 var_41;
+                  ^
+
+default_program(2557): warning #550-D: variable "var_56" was set but never used
+      wp::float32 var_56;
+                  ^
+
+default_program(2572): warning #550-D: variable "var_71" was set but never used
+      wp::float32 var_71;
+                  ^
+
+default_program(2587): warning #550-D: variable "var_86" was set but never used
+      wp::float32 var_86;
+                  ^
+
+default_program(2750): warning #550-D: variable "var_11" was set but never used
+      wp::float32 var_11;
+                  ^
+
+default_program(2765): warning #550-D: variable "var_26" was set but never used
+      wp::float32 var_26;
+                  ^
+
+default_program(2780): warning #550-D: variable "var_41" was set but never used
+      wp::float32 var_41;
+                  ^
+
+default_program(2795): warning #550-D: variable "var_56" was set but never used
+      wp::float32 var_56;
+                  ^
+
+default_program(2810): warning #550-D: variable "var_71" was set but never used
+      wp::float32 var_71;
+                  ^
+
+default_program(2825): warning #550-D: variable "var_86" was set but never used
+      wp::float32 var_86;
+                  ^
+
+default_program(3954): warning #177-D: variable "var_0" was declared but never referenced
+      const bool var_0 = true;
+                 ^
+
+default_program(4026): warning #177-D: variable "var_0" was declared but never referenced
+      const bool var_0 = true;
+                 ^
+
+default_program(4054): warning #177-D: variable "adj_0" was declared but never referenced
+      bool adj_0 = {};
+           ^
+
+default_program(4061): warning #550-D: variable "adj_7" was set but never used
+      bool adj_7 = {};
+           ^
+
+default_program(4073): warning #550-D: variable "adj_19" was set but never used
+      bool adj_19 = {};
+           ^
+
+default_program(4074): warning #550-D: variable "adj_20" was set but never used
+      bool adj_20 = {};
+           ^
+
+default_program(4808): warning #69-D: integer conversion resulted in truncation
+      const wp::int32 var_26 = 47249310208;
+                               ^
+
+default_program(4977): warning #69-D: integer conversion resulted in truncation
+      const wp::int32 var_26 = 47249310208;
+                               ^
+
+default_program(5319): warning #177-D: variable "var_1" was declared but never referenced
+      const wp::int32 var_1 = 0;
+                      ^
+
+default_program(5320): warning #177-D: variable "var_2" was declared but never referenced
+      const bool var_2 = false;
+                 ^
+
+default_program(5321): warning #177-D: variable "var_3" was declared but never referenced
+      const bool var_3 = true;
+                 ^
+
+default_program(5326): warning #177-D: variable "var_8" was declared but never referenced
+      const bool var_8 = false;
+                 ^
+
+default_program(5328): warning #177-D: variable "var_10" was declared but never referenced
+      const wp::int32 var_10 = 1;
+                      ^
+
+default_program(5329): warning #177-D: variable "var_11" was declared but never referenced
+      const bool var_11 = true;
+                 ^
+
+default_program(5335): warning #177-D: variable "var_17" was declared but never referenced
+      const bool var_17 = false;
+                 ^
+
+default_program(5336): warning #177-D: variable "var_18" was declared but never referenced
+      const bool var_18 = false;
+                 ^
+
+default_program(5337): warning #177-D: variable "var_19" was declared but never referenced
+      const wp::int32 var_19 = 2;
+                      ^
+
+default_program(5338): warning #177-D: variable "var_20" was declared but never referenced
+      const bool var_20 = true;
+                 ^
+
+default_program(5344): warning #177-D: variable "var_26" was declared but never referenced
+      const bool var_26 = false;
+                 ^
+
+default_program(5345): warning #177-D: variable "var_27" was declared but never referenced
+      const bool var_27 = true;
+                 ^
+
+default_program(5351): warning #177-D: variable "var_33" was declared but never referenced
+      const wp::int32 var_33 = 3;
+                      ^
+
+default_program(5352): warning #177-D: variable "var_34" was declared but never referenced
+      const bool var_34 = true;
+                 ^
+
+default_program(5358): warning #177-D: variable "var_40" was declared but never referenced
+      const bool var_40 = false;
+                 ^
+
+default_program(5359): warning #177-D: variable "var_41" was declared but never referenced
+      const bool var_41 = false;
+                 ^
+
+default_program(5469): warning #177-D: variable "var_1" was declared but never referenced
+      const wp::int32 var_1 = 0;
+                      ^
+
+default_program(5470): warning #177-D: variable "var_2" was declared but never referenced
+      const bool var_2 = false;
+                 ^
+
+default_program(5471): warning #177-D: variable "var_3" was declared but never referenced
+      const bool var_3 = true;
+                 ^
+
+default_program(5476): warning #177-D: variable "var_8" was declared but never referenced
+      const bool var_8 = false;
+                 ^
+
+default_program(5478): warning #177-D: variable "var_10" was declared but never referenced
+      const wp::int32 var_10 = 1;
+                      ^
+
+default_program(5479): warning #177-D: variable "var_11" was declared but never referenced
+      const bool var_11 = true;
+                 ^
+
+default_program(5485): warning #177-D: variable "var_17" was declared but never referenced
+      const bool var_17 = false;
+                 ^
+
+default_program(5486): warning #177-D: variable "var_18" was declared but never referenced
+      const bool var_18 = false;
+                 ^
+
+default_program(5487): warning #177-D: variable "var_19" was declared but never referenced
+      const wp::int32 var_19 = 2;
+                      ^
+
+default_program(5488): warning #177-D: variable "var_20" was declared but never referenced
+      const bool var_20 = true;
+                 ^
+
+default_program(5494): warning #177-D: variable "var_26" was declared but never referenced
+      const bool var_26 = false;
+                 ^
+
+default_program(5495): warning #177-D: variable "var_27" was declared but never referenced
+      const bool var_27 = true;
+                 ^
+
+default_program(5501): warning #177-D: variable "var_33" was declared but never referenced
+      const wp::int32 var_33 = 3;
+                      ^
+
+default_program(5502): warning #177-D: variable "var_34" was declared but never referenced
+      const bool var_34 = true;
+                 ^
+
+default_program(5508): warning #177-D: variable "var_40" was declared but never referenced
+      const bool var_40 = false;
+                 ^
+
+default_program(5509): warning #177-D: variable "var_41" was declared but never referenced
+      const bool var_41 = false;
+                 ^
+
+default_program(5513): warning #177-D: variable "adj_1" was declared but never referenced
+      wp::int32 adj_1 = {};
+                ^
+
+default_program(5514): warning #177-D: variable "adj_2" was declared but never referenced
+      bool adj_2 = {};
+           ^
+
+default_program(5515): warning #177-D: variable "adj_3" was declared but never referenced
+      bool adj_3 = {};
+           ^
+
+default_program(5516): warning #177-D: variable "adj_4" was declared but never referenced
+      wp::int32 adj_4 = {};
+                ^
+
+default_program(5520): warning #177-D: variable "adj_8" was declared but never referenced
+      bool adj_8 = {};
+           ^
+
+default_program(5522): warning #177-D: variable "adj_10" was declared but never referenced
+      wp::int32 adj_10 = {};
+                ^
+
+default_program(5523): warning #177-D: variable "adj_11" was declared but never referenced
+      bool adj_11 = {};
+           ^
+
+default_program(5524): warning #177-D: variable "adj_12" was declared but never referenced
+      wp::int32 adj_12 = {};
+                ^
+
+default_program(5529): warning #177-D: variable "adj_17" was declared but never referenced
+      bool adj_17 = {};
+           ^
+
+default_program(5530): warning #177-D: variable "adj_18" was declared but never referenced
+      bool adj_18 = {};
+           ^
+
+default_program(5531): warning #177-D: variable "adj_19" was declared but never referenced
+      wp::int32 adj_19 = {};
+                ^
+
+default_program(5532): warning #177-D: variable "adj_20" was declared but never referenced
+      bool adj_20 = {};
+           ^
+
+default_program(5533): warning #177-D: variable "adj_21" was declared but never referenced
+      wp::int32 adj_21 = {};
+                ^
+
+default_program(5538): warning #177-D: variable "adj_26" was declared but never referenced
+      bool adj_26 = {};
+           ^
+
+default_program(5539): warning #177-D: variable "adj_27" was declared but never referenced
+      bool adj_27 = {};
+           ^
+
+default_program(5540): warning #177-D: variable "adj_28" was declared but never referenced
+      wp::int32 adj_28 = {};
+                ^
+
+default_program(5545): warning #177-D: variable "adj_33" was declared but never referenced
+      wp::int32 adj_33 = {};
+                ^
+
+default_program(5546): warning #177-D: variable "adj_34" was declared but never referenced
+      bool adj_34 = {};
+           ^
+
+default_program(5547): warning #177-D: variable "adj_35" was declared but never referenced
+      wp::int32 adj_35 = {};
+                ^
+
+default_program(5552): warning #177-D: variable "adj_40" was declared but never referenced
+      bool adj_40 = {};
+           ^
+
+default_program(5553): warning #177-D: variable "adj_41" was declared but never referenced
+      bool adj_41 = {};
+           ^
+
+default_program(5829): warning #550-D: variable "var_9" was set but never used
+      wp::float32 var_9;
+                  ^
+
+default_program(5838): warning #550-D: variable "var_18" was set but never used
+      wp::float32 var_18;
+                  ^
+
+default_program(5848): warning #550-D: variable "var_28" was set but never used
+      wp::float32 var_28;
+                  ^
+
+default_program(5857): warning #550-D: variable "var_37" was set but never used
+      wp::float32 var_37;
+                  ^
+
+default_program(5867): warning #550-D: variable "var_47" was set but never used
+      wp::float32 var_47;
+                  ^
+
+default_program(5876): warning #550-D: variable "var_56" was set but never used
+      wp::float32 var_56;
+                  ^
+
+default_program(6008): warning #550-D: variable "var_9" was set but never used
+      wp::float32 var_9;
+                  ^
+
+default_program(6017): warning #550-D: variable "var_18" was set but never used
+      wp::float32 var_18;
+                  ^
+
+default_program(6027): warning #550-D: variable "var_28" was set but never used
+      wp::float32 var_28;
+                  ^
+
+default_program(6036): warning #550-D: variable "var_37" was set but never used
+      wp::float32 var_37;
+                  ^
+
+default_program(6046): warning #550-D: variable "var_47" was set but never used
+      wp::float32 var_47;
+                  ^
+
+default_program(6055): warning #550-D: variable "var_56" was set but never used
+      wp::float32 var_56;
+                  ^
+
+default_program(7070): warning #550-D: variable "var_11" was set but never used
+      wp::float32 var_11;
+                  ^
+
+default_program(7085): warning #550-D: variable "var_26" was set but never used
+      wp::float32 var_26;
+                  ^
+
+default_program(7100): warning #550-D: variable "var_41" was set but never used
+      wp::float32 var_41;
+                  ^
+
+default_program(7115): warning #550-D: variable "var_56" was set but never used
+      wp::float32 var_56;
+                  ^
+
+default_program(7130): warning #550-D: variable "var_71" was set but never used
+      wp::float32 var_71;
+                  ^
+
+default_program(7145): warning #550-D: variable "var_86" was set but never used
+      wp::float32 var_86;
+                  ^
+
+default_program(7308): warning #550-D: variable "var_11" was set but never used
+      wp::float32 var_11;
+                  ^
+
+default_program(7323): warning #550-D: variable "var_26" was set but never used
+      wp::float32 var_26;
+                  ^
+
+default_program(7338): warning #550-D: variable "var_41" was set but never used
+      wp::float32 var_41;
+                  ^
+
+default_program(7353): warning #550-D: variable "var_56" was set but never used
+      wp::float32 var_56;
+                  ^
+
+default_program(7368): warning #550-D: variable "var_71" was set but never used
+      wp::float32 var_71;
+                  ^
+
+default_program(7383): warning #550-D: variable "var_86" was set but never used
+      wp::float32 var_86;
+                  ^
+
+default_program(8570): warning #177-D: variable "var_1" was declared but never referenced
+      const bool var_1 = true;
+                 ^
+
+default_program(8654): warning #177-D: variable "var_1" was declared but never referenced
+      const bool var_1 = true;
+          Compile CUDA took 11760.79 ms
+Module xlb.operator.stepper.nse_stepper e4b5efd load on device 'cuda:0' took 11949.26 ms  (compiled)
+Error launching kernel: IncompressibleNavierStokesStepper___construct_warp__locals__kernel on device cuda:0
+           ^
+
+default_program(8683): warning #177-D: variable "adj_1" was declared but never referenced
+      bool adj_1 = {};
+           ^
+
+default_program(8800): warning #177-D: variable "var_0" was declared but never referenced
+      const wp::int32 var_0 = 0;
+                      ^
+
+default_program(8801): warning #177-D: variable "var_1" was declared but never referenced
+      const bool var_1 = false;
+                 ^
+
+default_program(8802): warning #177-D: variable "var_2" was declared but never referenced
+      const wp::int32 var_2 = 1;
+                      ^
+
+default_program(8803): warning #177-D: variable "var_3" was declared but never referenced
+      const bool var_3 = true;
+                 ^
+
+default_program(8829): warning #177-D: variable "var_29" was declared but never referenced
+      const wp::int32 var_29 = 2;
+                      ^
+
+default_program(8830): warning #177-D: variable "var_30" was declared but never referenced
+      const bool var_30 = false;
+                 ^
+
+default_program(8831): warning #177-D: variable "var_31" was declared but never referenced
+      const wp::int32 var_31 = 3;
+                      ^
+
+default_program(8832): warning #177-D: variable "var_32" was declared but never referenced
+      const bool var_32 = false;
+                 ^
+
+default_program(8890): warning #177-D: variable "var_0" was declared but never referenced
+      const wp::int32 var_0 = 0;
+                      ^
+
+default_program(8891): warning #177-D: variable "var_1" was declared but never referenced
+      const bool var_1 = false;
+                 ^
+
+default_program(8892): warning #177-D: variable "var_2" was declared but never referenced
+      const wp::int32 var_2 = 1;
+                      ^
+
+default_program(8893): warning #177-D: variable "var_3" was declared but never referenced
+      const bool var_3 = true;
+                 ^
+
+default_program(8919): warning #177-D: variable "var_29" was declared but never referenced
+      const wp::int32 var_29 = 2;
+                      ^
+
+default_program(8920): warning #177-D: variable "var_30" was declared but never referenced
+      const bool var_30 = false;
+                 ^
+
+default_program(8921): warning #177-D: variable "var_31" was declared but never referenced
+      const wp::int32 var_31 = 3;
+                      ^
+
+default_program(8922): warning #177-D: variable "var_32" was declared but never referenced
+      const bool var_32 = false;
+                 ^
+
+default_program(8925): warning #177-D: variable "adj_0" was declared but never referenced
+      wp::int32 adj_0 = {};
+                ^
+
+default_program(8926): warning #177-D: variable "adj_1" was declared but never referenced
+      bool adj_1 = {};
+           ^
+
+default_program(8927): warning #177-D: variable "adj_2" was declared but never referenced
+      wp::int32 adj_2 = {};
+                ^
+
+default_program(8928): warning #177-D: variable "adj_3" was declared but never referenced
+      bool adj_3 = {};
+           ^
+
+default_program(8929): warning #177-D: variable "adj_4" was declared but never referenced
+      wp::int32 adj_4 = {};
+                ^
+
+default_program(8930): warning #177-D: variable "adj_5" was declared but never referenced
+      bool adj_5 = {};
+           ^
+
+default_program(8945): warning #550-D: variable "adj_20" was set but never used
+      bool adj_20 = {};
+           ^
+
+default_program(8954): warning #177-D: variable "adj_29" was declared but never referenced
+      wp::int32 adj_29 = {};
+                ^
+
+default_program(8955): warning #177-D: variable "adj_30" was declared but never referenced
+      bool adj_30 = {};
+           ^
+
+default_program(8956): warning #177-D: variable "adj_31" was declared but never referenced
+      wp::int32 adj_31 = {};
+                ^
+
+default_program(8957): warning #177-D: variable "adj_32" was declared but never referenced
+      bool adj_32 = {};
+           ^
+
+default_program(9235): warning #177-D: variable "adj_15" was declared but never referenced
+          bool adj_15 = {};
+               ^
+
