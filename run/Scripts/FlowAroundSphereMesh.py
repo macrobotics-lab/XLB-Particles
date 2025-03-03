@@ -17,8 +17,6 @@ import matplotlib.pyplot as plt
 
 # -------------------------- Simulation Setup --------------------------
 wp.clear_kernel_cache()
-wp.config.mode = "debug"
-wp.config.verify_cuda = True
 # Grid parameters
 grid_size_x, grid_size_y, grid_size_z = 512//2, 128//2, 128//2
 grid_shape = (grid_size_x, grid_size_y, grid_size_z)
@@ -27,14 +25,14 @@ grid_shape = (grid_size_x, grid_size_y, grid_size_z)
 compute_backend = ComputeBackend.WARP
 precision_policy = PrecisionPolicy.FP32FP32
 
-velocity_set = xlb.velocity_set.D3Q19(precision_policy=precision_policy, compute_backend=compute_backend)
+velocity_set = xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=compute_backend)
 wind_speed = 0.02
 num_steps = 100000
 print_interval = 1000
 post_process_interval = 1000
 
 # Physical Parameters
-Re = 100.0
+Re = 50000.0
 clength = grid_size_x - 1
 visc = wind_speed * clength / Re
 omega = 1.0 / (3.0 * visc + 0.5)
@@ -77,7 +75,7 @@ mesh_vertices = mesh.vertices
 # Transform the mesh points to align with the grid
 mesh_vertices -= mesh_vertices.min(axis=0)
 mesh_extents = mesh_vertices.max(axis=0)
-mesh_vertices = mesh_vertices 
+mesh_vertices = mesh_vertices*15.
 shift = np.array([grid_shape[0] / 4, (grid_shape[1] - mesh_extents[1]) / 2, (grid_shape[2] - mesh_extents[2])/2])
 car_vertices = mesh_vertices + shift
 car_cross_section = np.prod(mesh_extents[1:])
@@ -103,7 +101,7 @@ boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_car]
 stepper = IncompressibleNavierStokesStepper(
     grid=grid,
     boundary_conditions=boundary_conditions,
-    collision_type="BGK",
+    collision_type="KBC",
 )
 
 # Prepare Fields
@@ -220,7 +218,7 @@ momentum_transfer = MomentumTransfer(bc_car, compute_backend=compute_backend)
 macro = Macroscopic(
     compute_backend=ComputeBackend.JAX,
     precision_policy=precision_policy,
-    velocity_set=xlb.velocity_set.D3Q19(precision_policy=precision_policy, compute_backend=ComputeBackend.JAX),
+    velocity_set=xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=ComputeBackend.JAX),
 )
 
 # Initialize Lists to Store Coefficients and Time Steps
