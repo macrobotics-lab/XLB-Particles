@@ -111,7 +111,7 @@ class MomentumTransfer(Operator):
             f_1: wp.array4d(dtype=Any),
             bc_mask: wp.array4d(dtype=wp.uint8),
             missing_mask: wp.array4d(dtype=wp.bool),
-            force: wp.array(dtype=Any),
+            force: wp.array(dtype=wp.vec3),
         ):
             # Get the global index
             i, j, k = wp.tid()
@@ -157,15 +157,15 @@ class MomentumTransfer(Operator):
                             elif _c[d, _opp_indices[l]] == -1:
                                 m[d] -= phi
 
-            wp.atomic_add(force, 0, m)
+            force[i,j,k] = wp.vec3f(m[0], m[1], m[2])
 
         return None, kernel
 
     @Operator.register_backend(ComputeBackend.WARP)
     def warp_implementation(self, f_0, f_1, bc_mask, missing_mask):
-        # Allocate the force vector (the total integral value will be computed)
+        # Allocate the force array
         _u_vec = wp.vec(self.velocity_set.d, dtype=self.compute_dtype)
-        force = wp.zeros((1), dtype=_u_vec)
+        force = wp.zeros(f_0.shape[1:], dtype=wp.vec3)
 
         # Launch the warp kernel
         wp.launch(
@@ -173,4 +173,4 @@ class MomentumTransfer(Operator):
             inputs=[f_0, f_1, bc_mask, missing_mask, force],
             dim=f_0.shape[1:],
         )
-        return force.numpy()[0]
+        return force

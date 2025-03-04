@@ -63,6 +63,7 @@ class RegularizedBC(ZouHeBC):
             mesh_vertices,
         )
         self.momentum_flux = MomentumFlux()
+        self.indices = indices
 
     @partial(jit, static_argnums=(0,), inline=True)
     def regularize_fpop(self, fpop, feq):

@@ -71,17 +71,17 @@ walls = [box["bottom"][i] + box["top"][i] + box["front"][i] + box["back"][i] for
 walls = np.unique(np.array(walls), axis=-1).tolist()
 
 # Create warp deformable shape
-builder = wp.sim.ModelBuilder(up_vector=(0, 0, 1),gravity=0.0)
+builder = wp.sim.ModelBuilder(up_vector=(0, 0, 1.),gravity=0.0)
 builder.add_soft_grid(
-            pos=wp.vec3(grid_shape[0]/2, grid_shape[1]/2, grid_shape[2]/2),
+            pos=wp.vec3(grid_shape[0]//2, grid_shape[1]//2, grid_shape[2]//2),
             rot=wp.quat_identity(),
             vel=wp.vec3(0.0, 0.0, 0.0),
-            dim_x=grid_shape[0]//4*3,
-            dim_y=grid_shape[1]//8,
-            dim_z=grid_shape[1]//4*3,
-            cell_x=1.0,
-            cell_y=1.0,
-            cell_z=1.0,
+            dim_x=int(grid_shape[0]//4),
+            dim_y=int(grid_shape[1]//8),
+            dim_z=int(grid_shape[2]//4),
+            cell_x=int(1),
+            cell_y=int(1),
+            cell_z=int(1),
             density=1.0,
             k_mu=50000.0,
             k_lambda=20000.0,
@@ -94,59 +94,48 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-def update_mesh(state):
-    mesh_indices = jnp.arange(state.particle_q.shape[0])
+def update_mesh(model,state):
 
     mesh = wp.Mesh(
-        points=wp.array(state.particle_q, dtype=wp.vec3),
-        indices=wp.array(mesh_indices, dtype=int),
-        velocities=wp.zeros((mesh_indices.shape[0], 3), dtype=wp.vec3),
+        points=state.particle_q,
+        indices=model.tri_indices.flatten(),
+        velocities=state.particle_qd,
             )
     return mesh
 
-mesh = update_mesh(state_0)
+mesh = update_mesh(model,state_0)
 
-def update_fluid_sim(mesh):
-
-    bc_left = RegularizedBC("velocity", prescribed_value=(wind_speed, 0.0, 0.0), indices=inlet)
-    bc_walls = FullwayBounceBackBC(indices=walls)
-    bc_do_nothing = ExtrapolationOutflowBC(indices=outlet)
-    bc_mesh = InterpolatedBounceBackMeshBC(mesh_vertices=state_0.particle_q,mesh_id=mesh.id)
-    boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_mesh]
+bc_left = RegularizedBC("velocity", prescribed_value=(wind_speed, 0.0, 0.0), indices=inlet)
+bc_walls = FullwayBounceBackBC(indices=walls)
+bc_do_nothing = ExtrapolationOutflowBC(indices=outlet)
+bc_mesh = InterpolatedBounceBackMeshBC(mesh_vertices=mesh.points.numpy(),mesh_id=mesh.id)
+boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_mesh]
 
 
-    # Setup Stepper
-    stepper = IncompressibleNavierStokesStepper(
+stepper = IncompressibleNavierStokesStepper(
         grid=grid,
         boundary_conditions=boundary_conditions,
         collision_type="KBC",
     )
+f_0, f_1, bc_mask, missing_mask = stepper.prepare_fields()
 
-    # Prepare Fields
-    f_0, f_1, bc_mask, missing_mask = stepper.prepare_fields()
+momentum_transfer = MomentumTransfer(bc_mesh, compute_backend=compute_backend)
 
-    # Setup Momentum Transfer for Force Calculation
-    bc_mesh = boundary_conditions[-1]
-    momentum_transfer = MomentumTransfer(bc_mesh, compute_backend=ComputeBackend.JAX)
-
-    return f_0, f_1, bc_mask, missing_mask, boundary_conditions, momentum_transfer, stepper
-
-f_0, f_1, bc_mask, missing_mask,boundary_conditions,momentum_transfer, stepper = update_fluid_sim(mesh)
 
 @wp.kernel
-def interpolate_force(boundary_force, particle_q, force_interp):
+def interpolate_force(boundary_force : wp.array(dtype=wp.vec3,ndim=3), particle_q : wp.array(dtype=wp.vec3), force_interp: wp.array(dtype=wp.vec3)):
 
-    i,j,k = wp.tid()
+    i= wp.tid()
 
-    pos = particle_q[i,j,k] # position of particle
+    pos = particle_q[i] # position of particle
     # Closest Particle Indices
-    i_min = wp.floor(pos[0])
-    j_min = wp.floor(pos[1])
-    k_min = wp.floor(pos[2])
+    i_min = int(wp.floor(pos[0]))
+    j_min = int(wp.floor(pos[1]))
+    k_min = int(wp.floor(pos[2]))
 
-    i_max = wp.ceil(pos[0])
-    j_max = wp.ceil(pos[1])
-    k_max = wp.ceil(pos[2])
+    i_max = int(wp.ceil(pos[0]))
+    j_max = int(wp.ceil(pos[1]))
+    k_max = int(wp.ceil(pos[2]))
 
     # Trilinear interpolation
     x_d = (pos[0]-wp.floor(pos[0]))
@@ -154,15 +143,15 @@ def interpolate_force(boundary_force, particle_q, force_interp):
     z_d = (pos[2]-wp.floor(pos[2]))
 
     # Interpolate the force
-    c00=boundary_force[i_min,j_min,k_min]*(1-x_d)+boundary_force[i_max,j_min,k_min]*x_d
-    c10=boundary_force[i_min,j_max,k_min]*(1-x_d)+boundary_force[i_max,j_max,k_min]*x_d
-    c01=boundary_force[i_min,j_min,k_max]*(1-x_d)+boundary_force[i_max,j_min,k_max]*x_d
-    c11=boundary_force[i_min,j_max,k_max]*(1-x_d)+boundary_force[i_max,j_max,k_max]*x_d
+    c00=boundary_force[i_min,j_min,k_min]*(1.-x_d)+boundary_force[i_max,j_min,k_min]*x_d
+    c10=boundary_force[i_min,j_max,k_min]*(1.-x_d)+boundary_force[i_max,j_max,k_min]*x_d
+    c01=boundary_force[i_min,j_min,k_max]*(1.-x_d)+boundary_force[i_max,j_min,k_max]*x_d
+    c11=boundary_force[i_min,j_max,k_max]*(1.-x_d)+boundary_force[i_max,j_max,k_max]*x_d
 
-    c_0=c00*(1-y_d)+c10*y_d
-    c_1=c01*(1-y_d)+c11*y_d
+    c_0=c00*(1.-y_d)+c10*y_d
+    c_1=c01*(1.-y_d)+c11*y_d
 
-    force_interp[i,j,k] = c_0*(1-z_d)+c_1*z_d
+    force_interp[i] = c_0*(1.-z_d)+c_1*z_d
 
 
 def compute_force(
@@ -173,17 +162,14 @@ def compute_force(
     bc_mask,
     state,
 ):
-
     boundary_force = momentum_transfer(f_0, f_1, bc_mask, missing_mask)
 
     # Write an interpolation scheme to convert the force from grid-based to point-based
-    force_interp = wp.zeros((state.particle_q.shape[0], 3), dtype=wp.vec3)
-
+    force_interp = wp.zeros(state.particle_q.shape[0], dtype=wp.vec3)
     wp.launch(
         kernel = interpolate_force,
         dim = state.particle_q.shape[0],
         inputs = [boundary_force, state.particle_q, force_interp],
-        dim = 3,
     )
 
     return force_interp
@@ -197,10 +183,10 @@ def render(step,f_0, grid_shape, macro):
     rho, u = macro(f_0_jax)
     # Remove boundary cells
     u = u[:, 1:-1, 1:-1, 1:-1]
+    rho = rho[1:-1, 1:-1, 1:-1]
     u_magnitude = jnp.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
 
-    fields = {"u_magnitude": u_magnitude,
-              "rho":rho}
+    fields = {"u_magnitude": u_magnitude,}
 
     # Save fields in VTK format
     save_fields_vtk(fields, timestep=step)
@@ -231,12 +217,11 @@ for step in range(num_steps):
     f_0, f_1 = f_1, f_0  # Swap the buffers
 
     # Compute the force
-    force = compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0)
+    state_0.particle_f = compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0)
 
     # Integrate Solid 
-    wp.sim.collide(model,state_0)
     state_0.clear_forces()
-    state_1.clear_forces()
+    wp.sim.collide(model,state_0)
 
     integrator.simulate(model, state_0, state_1,sim_dt)
 
@@ -244,10 +229,25 @@ for step in range(num_steps):
     state_0, state_1 = state_1, state_0
 
     # Update Mesh
-    mesh = update_mesh(state_0)
+    #mesh = update_mesh(model,state_0)
 
     # Update Fluid Simulation
-    f_0, f_1, bc_mask, missing_mask, boundary_conditions, momentum_transfer, stepper = update_fluid_sim(mesh)
+    bc_mesh.mesh_vertices = mesh.points
+    bc_mesh.mesh_id = mesh.id
+    
+    bc_left.indices = inlet
+    bc_walls.indices = walls
+    bc_do_nothing.indices = outlet
+
+    boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_mesh]
+    # Update Stepper
+    stepper.boundary_conditions = boundary_conditions
+
+    # Update Fields
+    bc_mask, missing_mask = stepper._process_boundary_conditions(boundary_conditions,bc_mask, missing_mask)
+
+    # Update Momentum Transfer for Force Calculation
+    momentum_transfer.no_slip_bc_instance = bc_mesh
 
     # Print progress at intervals
     if step % print_interval == 0:

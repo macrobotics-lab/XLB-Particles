@@ -40,6 +40,7 @@ class FullwayBounceBackBC(BoundaryCondition):
             indices,
             mesh_vertices,
         )
+        self.indices = indices
 
     @Operator.register_backend(ComputeBackend.JAX)
     @partial(jit, static_argnums=(0))
