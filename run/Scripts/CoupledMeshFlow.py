@@ -25,7 +25,7 @@ wp.clear_kernel_cache()
 # wp.config.mode = "debug"
 # wp.config.verify_cuda = True
 # Grid parameters
-grid_size_x, grid_size_y, grid_size_z = 512//2, 128//2, 128//2
+grid_size_x, grid_size_y, grid_size_z = 512//2, 128//2, 128
 grid_shape = (grid_size_x, grid_size_y, grid_size_z)
 
 # Simulation Configuration
@@ -33,18 +33,18 @@ compute_backend = ComputeBackend.WARP
 precision_policy = PrecisionPolicy.FP32FP32
 
 velocity_set = xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=compute_backend)
-wind_speed = 0.2
+wind_speed = 0.02
 num_steps = 100000
 print_interval = 1000
 post_process_interval = 1000
 
 # Physical Parameters
-Re = 10000.0
+Re = 5000.0
 clength = grid_size_x - 1
 visc = wind_speed * clength / Re
 omega = 1.0 / (3.0 * visc + 0.5)
 
-sim_dt = 3e-4
+sim_dt = 3e-5
 
 # Print simulation info
 print("\n" + "=" * 50 + "\n")
@@ -84,7 +84,7 @@ builder.add_soft_grid(
             vel=wp.vec3(0.0, 0.0, 0.0),
             dim_x=int(grid_shape[0]//4),
             dim_y=int(grid_shape[1]//2),
-            dim_z=int(grid_shape[2]//16),
+            dim_z=int(grid_shape[2]//32),
             cell_x=int(1),
             cell_y=int(1),
             cell_z=int(1),
@@ -213,10 +213,8 @@ def render(step,f_0, grid_shape, macro,rho,u,force,force_interp):
     force = force[:,1:-1, 1:-1, 1:-1]
     
 
-    print(f"Net Force in X : {np.sum(force_interp[:,0])}")
-
     print(f"Maximum Force from MEM : {np.max(force)}")
-    print(f"Maximum Force from Interpolation : {np.max(force_interp)}")
+    print(f"Mean Velocity of Mesh : {np.mean(force_interp)}")
 
     u_magnitude = np.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
     f_magnitude = np.sqrt(force[0] ** 2 + force[1] ** 2 + force[2] ** 2)
@@ -300,7 +298,7 @@ for step in range(num_steps):
             rho,
             u,
             force,
-            force_interp
+            state_0.particle_qd
         )
 
 
