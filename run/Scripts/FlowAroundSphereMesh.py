@@ -197,22 +197,22 @@ def post_process(
     save_image(fields["u_magnitude"][:, mid_y, :], timestep=step)
 
     # Compute lift and drag
-    boundary_force = momentum_transfer(f_0, f_1, bc_mask, missing_mask)
-    drag = boundary_force[0]  # x-direction
-    lift = boundary_force[2]
-    cd = 2.0 * drag / (wind_speed**2 * car_cross_section)
-    cl = 2.0 * lift / (wind_speed**2 * car_cross_section)
-    drag_coefficients.append(cd)
-    lift_coefficients.append(cl)
-    time_steps.append(step)
+    # boundary_force = momentum_transfer(f_0, f_1, bc_mask, missing_mask)
+    # drag = boundary_force[0]  # x-direction
+    # lift = boundary_force[2]
+    # cd = 2.0 * drag / (wind_speed**2 * car_cross_section)
+    # cl = 2.0 * lift / (wind_speed**2 * car_cross_section)
+    # drag_coefficients.append(cd)
+    # lift_coefficients.append(cl)
+    # time_steps.append(step)
 
-    # Plot drag coefficient
-    plot_drag_coefficient(time_steps, drag_coefficients)
+    # # Plot drag coefficient
+    # plot_drag_coefficient(time_steps, drag_coefficients)
 
 
 # Setup Momentum Transfer for Force Calculation
 bc_car = boundary_conditions[-1]
-momentum_transfer = MomentumTransfer(bc_car, compute_backend=compute_backend)
+momentum_transfer = MomentumTransfer(bc_car, compute_backend=compute_backend,force = wp.zeros((grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.vec3))
 
 # Define Macroscopic Calculation
 macro = Macroscopic(
