@@ -195,14 +195,10 @@ class IndicesBoundaryMasker(Operator):
             bc.__dict__.pop("indices", None)
 
         # Trim arrays to actual size
-        indices = indices[:, :current_index]
-        id_numbers = id_numbers[:current_index]
-        is_interior = is_interior[:current_index]
-
         # Convert to Warp arrays
-        wp_indices = wp.array(indices, dtype=wp.int32)
-        wp_id_numbers = wp.array(id_numbers, dtype=wp.uint8)
-        wp_is_interior = wp.array(is_interior, dtype=wp.bool)
+        wp_indices = wp.array(indices[:, :current_index], dtype=wp.int32)
+        wp_id_numbers = wp.array(id_numbers[:current_index], dtype=wp.uint8)
+        wp_is_interior = wp.array(is_interior[:current_index], dtype=wp.bool)
 
         # Launch the warp kernel
         wp.launch(

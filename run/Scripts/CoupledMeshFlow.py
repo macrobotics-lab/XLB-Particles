@@ -14,12 +14,14 @@ import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import warp.sim
+from xlb.operator.boundary_masker import MeshBoundaryMasker
 
 
 # -------------------------- Simulation Setup --------------------------
 wp.clear_kernel_cache()
+wp.set_mempool_release_threshold("cuda:0", 0.2)
 # Grid parameters
-grid_size_x, grid_size_y, grid_size_z = 512//2, 128//2, 128//2
+grid_size_x, grid_size_y, grid_size_z = 128//8, 128//8, 128//8
 grid_shape = (grid_size_x, grid_size_y, grid_size_z)
 
 # Simulation Configuration
@@ -94,23 +96,41 @@ integrator = wp.sim.SemiImplicitIntegrator()
 state_0 = model.state()
 state_1 = model.state()
 
-def update_mesh(model,state):
-
-    mesh = wp.Mesh(
-        points=state.particle_q,
-        indices=model.tri_indices.flatten(),
-        velocities=state.particle_qd,
-            )
+def update_mesh(mesh, model,state):
+    if mesh == None:
+        mesh = wp.Mesh(
+            points=state.particle_q,
+            indices=model.tri_indices.flatten(),
+            velocities=state.particle_qd,
+                )
+    else:
+        mesh.__del__()
+        mesh = wp.Mesh(
+            points=state.particle_q,
+            indices=model.tri_indices.flatten(),
+            velocities=state.particle_qd,
+                )
     return mesh
 
-mesh = update_mesh(model,state_0)
+mesh = update_mesh(None, model,state_0)
 
 bc_left = RegularizedBC("velocity", prescribed_value=(wind_speed, 0.0, 0.0), indices=inlet)
 bc_walls = FullwayBounceBackBC(indices=walls)
 bc_do_nothing = ExtrapolationOutflowBC(indices=outlet)
-bc_mesh = InterpolatedBounceBackMeshBC(mesh_vertices=mesh.points.numpy(),mesh_id=mesh.id)
+bc_mesh = InterpolatedBounceBackMeshBC(mesh_vertices=1,mesh_id=mesh.id)
+boundary_conditions_static = [bc_walls, bc_left, bc_do_nothing]
 boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_mesh]
 
+stepper_static = IncompressibleNavierStokesStepper(
+        grid=grid,
+        boundary_conditions=boundary_conditions_static,
+        collision_type="KBC",
+    )
+_, _, bc_mask_static, missing_mask_static = stepper_static.prepare_fields()
+
+bc_left.indices=inlet
+bc_walls.indices=walls
+bc_do_nothing.indices=outlet
 
 stepper = IncompressibleNavierStokesStepper(
         grid=grid,
@@ -121,6 +141,15 @@ f_0, f_1, bc_mask, missing_mask = stepper.prepare_fields()
 
 momentum_transfer = MomentumTransfer(bc_mesh, compute_backend=compute_backend)
 
+mesh_masker =  MeshBoundaryMasker(
+                velocity_set=velocity_set,
+                precision_policy=precision_policy,
+                compute_backend=compute_backend,)
+
+def update_dynamic_BC(mesh_masker, bc_mesh,bc_mask_static,missing_mask_static):
+
+    bc_mask, missing_mask = mesh_masker(bc_mesh, bc_mask_static, missing_mask_static)
+    return bc_mask, missing_mask
 
 @wp.kernel
 def interpolate_force(boundary_force : wp.array(dtype=wp.vec3,ndim=3), particle_q : wp.array(dtype=wp.vec3), force_interp: wp.array(dtype=wp.vec3)):
@@ -163,9 +192,8 @@ def compute_force(
     state,
 ):
     boundary_force = momentum_transfer(f_0, f_1, bc_mask, missing_mask)
-
+    force_interp.zero_()
     # Write an interpolation scheme to convert the force from grid-based to point-based
-    force_interp = wp.zeros(state.particle_q.shape[0], dtype=wp.vec3)
     wp.launch(
         kernel = interpolate_force,
         dim = state.particle_q.shape[0],
@@ -174,17 +202,16 @@ def compute_force(
 
     return force_interp
     
-def render(step,f_0, grid_shape, macro):
+def render(step,f_0, grid_shape, macro,rho,u):
     # Compute macroscopic quantities
-    if not isinstance(f_0, jnp.ndarray):
-        f_0_jax = wp.to_jax(f_0)
-    else:
-        f_0_jax = f_0
-    rho, u = macro(f_0_jax)
+    rho, u = macro(f_0,rho,u)
     # Remove boundary cells
     u = u[:, 1:-1, 1:-1, 1:-1]
-    rho = rho[1:-1, 1:-1, 1:-1]
-    u_magnitude = jnp.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
+    rho = rho[:,1:-1, 1:-1, 1:-1]
+    u = u.numpy()
+    rho = rho.numpy()
+
+    u_magnitude = np.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
 
     fields = {"u_magnitude": u_magnitude,}
 
@@ -198,15 +225,20 @@ def render(step,f_0, grid_shape, macro):
 
 # Define Macroscopic Calculation
 macro = Macroscopic(
-    compute_backend=ComputeBackend.JAX,
+    compute_backend=ComputeBackend.WARP,
     precision_policy=precision_policy,
-    velocity_set=xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=ComputeBackend.JAX),
+    velocity_set=xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=ComputeBackend.WARP),
 )
 
 # Initialize Lists to Store Coefficients and Time Steps
 time_steps = []
 drag_coefficients = []
 lift_coefficients = []
+
+rho = wp.zeros((1,grid_shape[0],grid_shape[1],grid_shape[2]), dtype=wp.float32)
+u = wp.zeros((3,grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.float32)
+force_interp = wp.zeros(state_0.particle_q.shape[0], dtype=wp.vec3)
+
 
 # -------------------------- Simulation Loop --------------------------
 
@@ -229,22 +261,15 @@ for step in range(num_steps):
     state_0, state_1 = state_1, state_0
 
     # Update Mesh
-    #mesh = update_mesh(model,state_0)
-
-    # Update Fluid Simulation
-    bc_mesh.mesh_vertices = mesh.points
-    bc_mesh.mesh_id = mesh.id
     
-    bc_left.indices = inlet
-    bc_walls.indices = walls
-    bc_do_nothing.indices = outlet
-
-    boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_mesh]
-    # Update Stepper
-    stepper.boundary_conditions = boundary_conditions
+    mesh = update_mesh(mesh,model,state_0)
+ 
+    # Update Fluid Simulation
+    bc_mesh.mesh_vertices =1
+    bc_mesh.mesh_id = mesh.id
 
     # Update Fields
-    bc_mask, missing_mask = stepper._process_boundary_conditions(boundary_conditions,bc_mask, missing_mask)
+    bc_mask, missing_mask = update_dynamic_BC(mesh_masker, bc_mesh,bc_mask_static,missing_mask_static)
 
     # Update Momentum Transfer for Force Calculation
     momentum_transfer.no_slip_bc_instance = bc_mesh
@@ -263,7 +288,9 @@ for step in range(num_steps):
             step,
             f_0,
             grid_shape,
-            macro
+            macro,
+            rho,
+            u
         )
 
 

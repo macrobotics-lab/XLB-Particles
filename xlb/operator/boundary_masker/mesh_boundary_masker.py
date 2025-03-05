@@ -209,21 +209,22 @@ class MeshBoundaryMasker(Operator):
     ):
         assert bc.mesh_vertices is not None, f'Please provide the mesh vertices for {bc.__class__.__name__} BC using keyword "mesh_vertices"!'
         assert bc.indices is None, f"Please use IndicesBoundaryMasker operator if {bc.__class__.__name__} is imposed on known indices of the grid!"
-        assert bc.mesh_vertices.shape[1] == self.velocity_set.d, (
-            "Mesh points must be reshaped into an array (N, 3) where N indicates number of points!"
-        )
+        #assert bc.mesh_vertices.shape[1] == self.velocity_set.d, (
+        #    "Mesh points must be reshaped into an array (N, 3) where N indicates number of points!"
+        #)
         mesh_vertices = bc.mesh_vertices
         id_number = bc.id
+        mesh_id = bc.mesh_id
 
         # Check mesh extents against domain dimensions
-        domain_shape = bc_mask.shape[1:]  # (nx, ny, nz)
-        mesh_min = np.min(mesh_vertices, axis=0)
-        mesh_max = np.max(mesh_vertices, axis=0)
+        # domain_shape = bc_mask.shape[1:]  # (nx, ny, nz)
+        # mesh_min = wp.min(mesh_vertices, axis=0)
+        # mesh_max = wp.max(mesh_vertices, axis=0)
 
-        if any(mesh_min < 0) or any(mesh_max >= domain_shape):
-            raise ValueError(
-                f"Mesh extents ({mesh_min}, {mesh_max}) exceed domain dimensions {domain_shape}. The mesh must be fully contained within the domain."
-            )
+        # if any(mesh_min < 0) or any(mesh_max >= domain_shape):
+        #     raise ValueError(
+        #         f"Mesh extents ({mesh_min}, {mesh_max}) exceed domain dimensions {domain_shape}. The mesh must be fully contained within the domain."
+        #     )
 
         # We are done with bc.mesh_vertices. Remove them from BC objects
         bc.__dict__.pop("mesh_vertices", None)
@@ -231,17 +232,12 @@ class MeshBoundaryMasker(Operator):
         # Ensure this masker is called only for BCs that need implicit distance to the mesh
         assert not bc.needs_mesh_distance, 'Please use "MeshDistanceBoundaryMasker" if this BC needs mesh distance!'
 
-        mesh_indices = np.arange(mesh_vertices.shape[0])
-        mesh = wp.Mesh(
-            points=wp.array(mesh_vertices, dtype=wp.vec3),
-            indices=wp.array(mesh_indices, dtype=int),
-        )
 
         # Launch the warp kernel
         wp.launch(
             self.warp_kernel,
             inputs=[
-                mesh.id,
+                mesh_id,
                 id_number,
                 bc_mask,
                 missing_mask,

@@ -39,8 +39,8 @@ class Macroscopic(Operator):
         @wp.kernel
         def kernel(
             f: wp.array4d(dtype=Any),
-            rho: wp.array4d(dtype=Any),
-            u: wp.array4d(dtype=Any),
+            rho: wp.array4d(dtype=wp.float32),
+            u: wp.array4d(dtype=wp.float32),
         ):
             i, j, k = wp.tid()
             index = wp.vec3i(i, j, k)
