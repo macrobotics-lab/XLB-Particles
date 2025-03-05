@@ -33,18 +33,18 @@ compute_backend = ComputeBackend.WARP
 precision_policy = PrecisionPolicy.FP32FP32
 
 velocity_set = xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=compute_backend)
-wind_speed = 0.02
+wind_speed = 0.2
 num_steps = 100000
 print_interval = 1000
 post_process_interval = 1000
 
 # Physical Parameters
-Re = 50000.0
+Re = 10000.0
 clength = grid_size_x - 1
 visc = wind_speed * clength / Re
 omega = 1.0 / (3.0 * visc + 0.5)
 
-sim_dt = 3e-5
+sim_dt = 3e-4
 
 # Print simulation info
 print("\n" + "=" * 50 + "\n")
@@ -79,20 +79,20 @@ walls = np.unique(np.array(walls), axis=-1).tolist()
 # Create warp deformable shape
 builder = wp.sim.ModelBuilder(up_vector=(0, 0, 1.),gravity=0.0)
 builder.add_soft_grid(
-            pos=wp.vec3(grid_shape[0]//8, grid_shape[1]//2, grid_shape[2]//2),
+            pos=wp.vec3(grid_shape[0]//8, grid_shape[1]//4, grid_shape[2]//2),
             rot=wp.quat_identity(),
             vel=wp.vec3(0.0, 0.0, 0.0),
             dim_x=int(grid_shape[0]//4),
-            dim_y=int(grid_shape[1]//8),
-            dim_z=int(grid_shape[2]//8),
+            dim_y=int(grid_shape[1]//2),
+            dim_z=int(grid_shape[2]//16),
             cell_x=int(1),
             cell_y=int(1),
             cell_z=int(1),
             density=1.0,
-            k_mu=5.0,
-            k_lambda=2.0,
-            k_damp=1.0,
-            fix_right=True,
+            k_mu=1.0,
+            k_lambda=1.0,
+            k_damp=0.0,
+            fix_left=True,
         )
 model = builder.finalize()
 integrator = wp.sim.SemiImplicitIntegrator()
@@ -190,7 +190,7 @@ def compute_force(
     force,
     force_interp,
 ):
-    _ = momentum_transfer(f_0, f_1, bc_mask, missing_mask,force)
+    force = momentum_transfer(f_0, f_1, bc_mask, missing_mask,force)
     # Write an interpolation scheme to convert the force from grid-based to point-based
     wp.launch(
         kernel = interpolate_force,
@@ -198,18 +198,31 @@ def compute_force(
         inputs = [force, state.particle_q, force_interp],
     )
 
-    return
+    return force, force_interp
     
-def render(step,f_0, grid_shape, macro,rho,u):
+def render(step,f_0, grid_shape, macro,rho,u,force,force_interp):
     # Compute macroscopic quantities
     _, u = macro(f_0,rho,u)
     # Remove boundary cells
-    u = u[:, 1:-1, 1:-1, 1:-1]
     u = u.numpy()
+    force = force.numpy()
+    force_interp = force_interp.numpy()
+
+    u = u[:, 1:-1, 1:-1, 1:-1]
+    force = np.moveaxis(force,-1,0)
+    force = force[:,1:-1, 1:-1, 1:-1]
+    
+
+    print(f"Net Force in X : {np.sum(force_interp[:,0])}")
+
+    print(f"Maximum Force from MEM : {np.max(force)}")
+    print(f"Maximum Force from Interpolation : {np.max(force_interp)}")
 
     u_magnitude = np.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
+    f_magnitude = np.sqrt(force[0] ** 2 + force[1] ** 2 + force[2] ** 2)
 
-    fields = {"u_magnitude": u_magnitude,}
+
+    fields = {"force": f_magnitude, "u_magnitude": u_magnitude}
 
     # Save fields in VTK format
     save_fields_vtk(fields, timestep=step)
@@ -235,7 +248,7 @@ rho = wp.zeros((1,grid_shape[0],grid_shape[1],grid_shape[2]), dtype=wp.float32)
 u = wp.zeros((3,grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.float32)
 force_interp = wp.zeros(state_0.particle_q.shape[0], dtype=wp.vec3)
 force = wp.zeros((grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.vec3)
-momentum_transfer = MomentumTransfer(bc_mesh, compute_backend=compute_backend,force=force)
+momentum_transfer = MomentumTransfer(boundary_conditions[-1], compute_backend=ComputeBackend.WARP,force=force)
 # -------------------------- Simulation Loop --------------------------
 
 start_time = time.time()
@@ -246,11 +259,10 @@ for step in range(num_steps):
 
     # Compute the force
     force_interp.zero_()
-    compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0,force,force_interp)
+    force, force_interp = compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0,force,force_interp)
     state_0.particle_f = force_interp
 
     # # Integrate Solid 
-    state_0.clear_forces()
     integrator.simulate(model, state_0, state_1,sim_dt)
 
     # Swap States
@@ -258,7 +270,7 @@ for step in range(num_steps):
 
     # Update Mesh
     
-    _ = update_mesh(mesh,model,state_0)
+    mesh = update_mesh(mesh,model,state_0)
  
     # Update Fluid Simulation
     bc_mesh.mesh_vertices =1
@@ -269,7 +281,6 @@ for step in range(num_steps):
 
     # Update Momentum Transfer for Force Calculation
     momentum_transfer.no_slip_bc_instance = bc_mesh
-    momentum_transfer.force = force.zero_()
 
     # Print progress at intervals
     if step % print_interval == 0:
@@ -287,7 +298,9 @@ for step in range(num_steps):
             grid_shape,
             macro,
             rho,
-            u
+            u,
+            force,
+            force_interp
         )
 
 

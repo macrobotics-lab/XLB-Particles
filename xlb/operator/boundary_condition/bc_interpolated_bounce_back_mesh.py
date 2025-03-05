@@ -84,7 +84,6 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
             f_post: Any,
         ):
             # Post-streaming values are only modified at missing direction
-            _f = f_post
             for l in range(self.velocity_set.q):
                 # If the mask is missing then take the opposite index
                 if missing_mask[l] == wp.uint8(1):
@@ -107,13 +106,13 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
                     f = int(0)          # hit face index
                     
                     wp.mesh_query_ray(mesh_id, start, dir, length,t,u,v,sign,n,f)
-                    _f[l] = (
+                    f_post[l] = (
                                 2.0 * t/ (1.0 + 2.0 * t) * f_post[l]
                                 + 1.0 / (1.0 + 2.0 * t) * f_pre[_opp_indices[l]]
                                 + 6.0* t/ (1.0 - 2.0 * t)* _w[l]* wp.dot(wp.mesh_eval_velocity(mesh_id, f, u, v), dir)
                             )
 
-            return _f
+            return f_post
 
         kernel = self._construct_kernel(functional)
 
