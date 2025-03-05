@@ -19,9 +19,13 @@ from xlb.operator.boundary_masker import MeshBoundaryMasker
 
 # -------------------------- Simulation Setup --------------------------
 wp.clear_kernel_cache()
-wp.set_mempool_release_threshold("cuda:0", 0.2)
+# wp.set_mempool_release_threshold("cuda:0", 0)
+# wp.config.verbose = True
+# wp.config.print_launches = True
+# wp.config.mode = "debug"
+# wp.config.verify_cuda = True
 # Grid parameters
-grid_size_x, grid_size_y, grid_size_z = 128//8, 128//8, 128//8
+grid_size_x, grid_size_y, grid_size_z = 512//2, 128//2, 128//2
 grid_shape = (grid_size_x, grid_size_y, grid_size_z)
 
 # Simulation Configuration
@@ -30,9 +34,9 @@ precision_policy = PrecisionPolicy.FP32FP32
 
 velocity_set = xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=compute_backend)
 wind_speed = 0.02
-num_steps = 100000
-print_interval = 1000
-post_process_interval = 1000
+num_steps = 100
+print_interval = 10
+post_process_interval = 10
 
 # Physical Parameters
 Re = 50000.0
@@ -139,8 +143,6 @@ stepper = IncompressibleNavierStokesStepper(
     )
 f_0, f_1, bc_mask, missing_mask = stepper.prepare_fields()
 
-momentum_transfer = MomentumTransfer(bc_mesh, compute_backend=compute_backend)
-
 mesh_masker =  MeshBoundaryMasker(
                 velocity_set=velocity_set,
                 precision_policy=precision_policy,
@@ -190,26 +192,25 @@ def compute_force(
     missing_mask,
     bc_mask,
     state,
+    force,
+    force_interp,
 ):
-    boundary_force = momentum_transfer(f_0, f_1, bc_mask, missing_mask)
-    force_interp.zero_()
+    _ = momentum_transfer(f_0, f_1, bc_mask, missing_mask,force)
     # Write an interpolation scheme to convert the force from grid-based to point-based
     wp.launch(
         kernel = interpolate_force,
         dim = state.particle_q.shape[0],
-        inputs = [boundary_force, state.particle_q, force_interp],
+        inputs = [force, state.particle_q, force_interp],
     )
 
-    return force_interp
+    return
     
 def render(step,f_0, grid_shape, macro,rho,u):
     # Compute macroscopic quantities
-    rho, u = macro(f_0,rho,u)
+    _, u = macro(f_0,rho,u)
     # Remove boundary cells
     u = u[:, 1:-1, 1:-1, 1:-1]
-    rho = rho[:,1:-1, 1:-1, 1:-1]
     u = u.numpy()
-    rho = rho.numpy()
 
     u_magnitude = np.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
 
@@ -238,8 +239,8 @@ lift_coefficients = []
 rho = wp.zeros((1,grid_shape[0],grid_shape[1],grid_shape[2]), dtype=wp.float32)
 u = wp.zeros((3,grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.float32)
 force_interp = wp.zeros(state_0.particle_q.shape[0], dtype=wp.vec3)
-
-
+force = wp.zeros((grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.vec3)
+momentum_transfer = MomentumTransfer(bc_mesh, compute_backend=compute_backend,force=force)
 # -------------------------- Simulation Loop --------------------------
 
 start_time = time.time()
@@ -249,35 +250,36 @@ for step in range(num_steps):
     f_0, f_1 = f_1, f_0  # Swap the buffers
 
     # Compute the force
-    state_0.particle_f = compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0)
+    # force_interp.zero_()
+    # compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0,force,force_interp)
+    # state_0.particle_f = force_interp
 
-    # Integrate Solid 
-    state_0.clear_forces()
-    wp.sim.collide(model,state_0)
+    # # Integrate Solid 
+    # state_0.clear_forces()
+    # integrator.simulate(model, state_0, state_1,sim_dt)
 
-    integrator.simulate(model, state_0, state_1,sim_dt)
+    # # Swap States
+    # state_0, state_1 = state_1, state_0
 
-    # Swap States
-    state_0, state_1 = state_1, state_0
-
-    # Update Mesh
+    # # Update Mesh
     
-    mesh = update_mesh(mesh,model,state_0)
+    # mesh = update_mesh(mesh,model,state_0)
  
-    # Update Fluid Simulation
-    bc_mesh.mesh_vertices =1
-    bc_mesh.mesh_id = mesh.id
+    # # Update Fluid Simulation
+    # bc_mesh.mesh_vertices =1
+    # bc_mesh.mesh_id = mesh.id
 
-    # Update Fields
-    bc_mask, missing_mask = update_dynamic_BC(mesh_masker, bc_mesh,bc_mask_static,missing_mask_static)
+    # # Update Fields
+    # bc_mask, missing_mask = update_dynamic_BC(mesh_masker, bc_mesh,bc_mask_static,missing_mask_static)
 
-    # Update Momentum Transfer for Force Calculation
-    momentum_transfer.no_slip_bc_instance = bc_mesh
+    # # Update Momentum Transfer for Force Calculation
+    # momentum_transfer.no_slip_bc_instance = bc_mesh
+    # momentum_transfer.force = force.zero_()
 
     # Print progress at intervals
     if step % print_interval == 0:
-        #if compute_backend == ComputeBackend.WARP:
-            #wp.synchronize()
+        if compute_backend == ComputeBackend.WARP:
+            wp.synchronize()
         elapsed_time = time.time() - start_time
         print(f"Iteration: {step}/{num_steps} | Time elapsed: {elapsed_time:.2f}s")
         start_time = time.time()

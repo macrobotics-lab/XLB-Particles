@@ -37,9 +37,11 @@ class MomentumTransfer(Operator):
         velocity_set: VelocitySet = None,
         precision_policy: PrecisionPolicy = None,
         compute_backend: ComputeBackend = None,
+        force: Any = None,
     ):
         self.no_slip_bc_instance = no_slip_bc_instance
         self.stream = Stream(velocity_set, precision_policy, compute_backend)
+        self.force = force
 
         # Call the parent constructor
         super().__init__(
@@ -97,6 +99,7 @@ class MomentumTransfer(Operator):
         _u_vec = wp.vec(self.velocity_set.d, dtype=self.compute_dtype)
         _missing_mask_vec = wp.vec(self.velocity_set.q, dtype=wp.uint8)  # TODO fix vec bool
         _no_slip_id = self.no_slip_bc_instance.id
+        force = self.force
 
         # Find velocity index for 0, 0, 0
         for l in range(self.velocity_set.q):
@@ -162,10 +165,9 @@ class MomentumTransfer(Operator):
         return None, kernel
 
     @Operator.register_backend(ComputeBackend.WARP)
-    def warp_implementation(self, f_0, f_1, bc_mask, missing_mask):
+    def warp_implementation(self, f_0, f_1, bc_mask, missing_mask,force):
         # Allocate the force array
         _u_vec = wp.vec(self.velocity_set.d, dtype=self.compute_dtype)
-        force = wp.zeros(f_0.shape[1:], dtype=wp.vec3)
 
         # Launch the warp kernel
         wp.launch(
