@@ -1,5 +1,5 @@
 import xlb
-import trimesh
+import openmesh
 import time
 from xlb.compute_backend import ComputeBackend
 from xlb.precision_policy import PrecisionPolicy
@@ -14,6 +14,7 @@ import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import warp.sim
+import warp.sim.render
 from xlb.operator.boundary_masker import MeshBoundaryMasker
 
 
@@ -25,7 +26,7 @@ wp.clear_kernel_cache()
 # wp.config.mode = "debug"
 # wp.config.verify_cuda = True
 # Grid parameters
-grid_size_x, grid_size_y, grid_size_z = 512//2, 128//2, 128
+grid_size_x, grid_size_y, grid_size_z = 512//2, 16, 128
 grid_shape = (grid_size_x, grid_size_y, grid_size_z)
 
 # Simulation Configuration
@@ -39,7 +40,7 @@ print_interval = 1000
 post_process_interval = 1000
 
 # Physical Parameters
-Re = 5000.0
+Re = 500.0
 clength = grid_size_x - 1
 visc = wind_speed * clength / Re
 omega = 1.0 / (3.0 * visc + 0.5)
@@ -76,26 +77,26 @@ outlet = box_no_edge["right"]
 walls = [box["bottom"][i] + box["top"][i] + box["front"][i] + box["back"][i] for i in range(velocity_set.d)]
 walls = np.unique(np.array(walls), axis=-1).tolist()
 
-# Create warp deformable shape
-builder = wp.sim.ModelBuilder(up_vector=(0, 0, 1.),gravity=0.0)
+# Create warp deformable shape 
+
+builder = warp.sim.ModelBuilder(up_vector=(1., 0, 0),gravity=0.)
 builder.add_soft_grid(
-            pos=wp.vec3(grid_shape[0]//8, grid_shape[1]//4, grid_shape[2]//2),
+            pos=wp.vec3(grid_shape[0]//4, grid_shape[1]//8*3, grid_shape[2]//4),
             rot=wp.quat_identity(),
-            vel=wp.vec3(0.0, 0.0, 0.0),
-            dim_x=int(grid_shape[0]//4),
-            dim_y=int(grid_shape[1]//2),
-            dim_z=int(grid_shape[2]//32),
-            cell_x=int(1),
-            cell_y=int(1),
-            cell_z=int(1),
+            vel=wp.vec3(0.02, 0.0, 0.0),
+            dim_x= grid_shape[0]//128,
+            dim_y=grid_shape[1]//4,
+            dim_z=grid_shape[2]//2,
+            cell_x=1,
+            cell_y=1,
+            cell_z=1,
             density=1.0,
             k_mu=1.0,
             k_lambda=1.0,
-            k_damp=0.0,
-            fix_left=True,
+            k_damp=10.0,
         )
 model = builder.finalize()
-integrator = wp.sim.SemiImplicitIntegrator()
+integrator = warp.sim.SemiImplicitIntegrator()
 
 state_0 = model.state()
 state_1 = model.state()
@@ -116,7 +117,7 @@ def update_mesh(mesh, model,state):
 mesh = update_mesh(None, model,state_0)
 
 bc_left = RegularizedBC("velocity", prescribed_value=(wind_speed, 0.0, 0.0), indices=inlet)
-bc_walls = FullwayBounceBackBC(indices=walls)
+bc_walls = HalfwayBounceBackBC(indices=walls)
 bc_do_nothing = ExtrapolationOutflowBC(indices=outlet)
 bc_mesh = InterpolatedBounceBackMeshBC(mesh_vertices=1,mesh_id=mesh.id)
 boundary_conditions_static = [bc_walls, bc_left, bc_do_nothing]
@@ -200,7 +201,7 @@ def compute_force(
 
     return force, force_interp
     
-def render(step,f_0, grid_shape, macro,rho,u,force,force_interp):
+def render( step,f_0, grid_shape, macro,rho,u,force,force_interp,state_0):
     # Compute macroscopic quantities
     _, u = macro(f_0,rho,u)
     # Remove boundary cells
@@ -228,8 +229,6 @@ def render(step,f_0, grid_shape, macro,rho,u,force,force_interp):
     mid_y = grid_shape[1] // 2
     save_image(fields["u_magnitude"][:, mid_y, :], timestep=step)
 
-
-
 # Define Macroscopic Calculation
 macro = Macroscopic(
     compute_backend=ComputeBackend.WARP,
@@ -247,6 +246,8 @@ u = wp.zeros((3,grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.float32)
 force_interp = wp.zeros(state_0.particle_q.shape[0], dtype=wp.vec3)
 force = wp.zeros((grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.vec3)
 momentum_transfer = MomentumTransfer(boundary_conditions[-1], compute_backend=ComputeBackend.WARP,force=force)
+
+renderer = warp.sim.render.SimRendererOpenGL(model,'./', camera_pos=(grid_shape[0]//2, grid_shape[1]//2, grid_shape[2]//2),)
 # -------------------------- Simulation Loop --------------------------
 
 start_time = time.time()
@@ -257,10 +258,12 @@ for step in range(num_steps):
 
     # Compute the force
     force_interp.zero_()
+    state_0.clear_forces()
     force, force_interp = compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0,force,force_interp)
     state_0.particle_f = force_interp
 
     # # Integrate Solid 
+
     integrator.simulate(model, state_0, state_1,sim_dt)
 
     # Swap States
@@ -298,7 +301,8 @@ for step in range(num_steps):
             rho,
             u,
             force,
-            state_0.particle_qd
+            state_0.particle_qd,
+            state_0
         )
 
 

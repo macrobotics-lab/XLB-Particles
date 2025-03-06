@@ -109,7 +109,7 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
                     f_post[l] = (
                                 2.0 * t/ (1.0 + 2.0 * t) * f_post[l]
                                 + 1.0 / (1.0 + 2.0 * t) * f_pre[_opp_indices[l]]
-                                + 6.0* t/ (1.0 - 2.0 * t)* _w[l]* wp.dot(wp.mesh_eval_velocity(mesh_id, f, u, v), dir)
+                                + 6.0 / (1.0 + 2.0 * t)* _w[l]* wp.dot(wp.mesh_eval_velocity(mesh_id, f, u, v), dir)
                             )
 
             return f_post
