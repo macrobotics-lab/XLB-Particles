@@ -126,7 +126,7 @@ class InterpolatedBounceBackSphereBC(BoundaryCondition):
                 if missing_mask[l] == wp.uint8(1):
                     # Get the pre-streaming distribution function in oppisite direction
                     weight = calculate_weight(_c,index,_sphere_c,_sphere_r,_opp_indices[l])
-                    _f[l] = 2.0*weight/(1.0+2.0*weight)*f_post[l] + 1.0/(1.0+2.0*weight)*f_pre[_opp_indices[l]]+6.0*weight/(1.0-2.0*weight)*_w[l]*wp.dot(self.u,_c[:,l])
+                    _f[l] = 2.0*weight/(1.0+2.0*weight)*f_post[l] + 1.0/(1.0+2.0*weight)*f_pre[_opp_indices[l]]+6.0*weight/(1.0+2.0*weight)*_w[l]*wp.dot(self.u,_c[:,l])
 
             return _f
 

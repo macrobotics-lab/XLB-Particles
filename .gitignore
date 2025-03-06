@@ -159,3 +159,6 @@ build/
 lib64
 pyvenv.cfg
 share/man/man1/ttx.1
+run/Inputs/gmsh-4.13.1-Linux64.tgz
+run/Inputs/gmsh-4.13.1-Linux64/bin/gmsh
+/run/Inputs/gmsh-4.13.1-Linux64
