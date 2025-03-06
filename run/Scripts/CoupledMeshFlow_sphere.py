@@ -80,13 +80,13 @@ walls = np.unique(np.array(walls), axis=-1).tolist()
 # Create warp deformable shape 
 mesh = meshio.read('../Inputs/SphereGmsh.msh')
 mesh_points = mesh.points
-mesh_indices = mesh.cells_dict['tetra'].flatten()
+mesh_indices = np.array(mesh.cells_dict['tetra'],dtype=int).ravel()
 mesh_points -= mesh_points.min(axis=0)
 mesh_points = mesh_points*15.
 mesh_center = mesh_points.max(axis=0)
 shift = np.array([grid_shape[0] / 4, (grid_shape[1] - mesh_center[1]) / 2, (grid_shape[2] - mesh_center[2])/2])
 
-builder = warp.sim.ModelBuilder(up_vector=(1., 0, 0),gravity=1.)
+builder = warp.sim.ModelBuilder(up_vector=(1., 0, 0),gravity=0.)
 builder.add_soft_mesh(
             vertices = mesh_points,
             indices = mesh_indices,
@@ -94,10 +94,10 @@ builder.add_soft_mesh(
             rot=wp.quat_identity(),
             vel = wp.vec3(0.0,0.0,0.0),
             scale=1.,                
-            k_mu=1000.,
-            k_lambda=1000.,
-            k_damp=1000.,
-            density=1e3,
+            k_mu=50000.,
+            k_lambda=20000.,
+            k_damp=0.,
+            density=100.,
         )
 model = builder.finalize()
 integrator = warp.sim.SemiImplicitIntegrator()
@@ -107,6 +107,7 @@ state_1 = model.state()
 
 print(f"Initialized {state_0.body_count} Bodies")
 print(f"Initialized {state_0.particle_count} Particles")
+print(f"Initialized {model.tet_count} Tetrahedra")
 
 
 def update_mesh(mesh, model,state):
@@ -238,9 +239,9 @@ def render(renderer, step,f_0, grid_shape, macro,rho,u,force,force_interp,state_
     mid_y = grid_shape[1] // 2
     save_image(fields["u_magnitude"][:, mid_y, :], timestep=step)
 
-    #renderer.begin_frame(step)
-    #renderer.render(state_0)
-    #renderer.end_frame()
+    renderer.begin_frame(step)
+    renderer.render(state_0)
+    renderer.end_frame()
 
 # Define Macroscopic Calculation
 macro = Macroscopic(
@@ -259,7 +260,7 @@ u = wp.zeros((3,grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.float32)
 force_interp = wp.zeros(state_0.particle_q.shape[0], dtype=wp.vec3)
 force = wp.zeros((grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.vec3)
 momentum_transfer = MomentumTransfer(boundary_conditions[-1], compute_backend=ComputeBackend.WARP,force=force)
-renderer = None #warp.sim.render.SimRendererOpenGL(model,'./', camera_pos=(grid_shape[0]//2, grid_shape[1]//2, grid_shape[2]//2),)
+renderer = warp.sim.render.SimRendererOpenGL(model,'./', )
 
 # -------------------------- Simulation Loop --------------------------
 
@@ -270,7 +271,6 @@ for step in range(num_steps):
     f_0, f_1 = f_1, f_0  # Swap the buffers
 
     # Compute the force
-    force_interp.zero_()
     state_0.clear_forces()
     force, force_interp = compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0,force,force_interp)
     state_0.particle_f = force_interp

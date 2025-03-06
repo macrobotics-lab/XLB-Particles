@@ -2,5 +2,8 @@ import meshio
 
 mesh = meshio.read('SphereGmsh.msh')
 
-print(mesh.points)
-print(mesh.cells_dict)
+mesh.write('SphereMesh.vtk')
+
+mesh = meshio.read('SphereGmsh.msh')
+print(mesh.cells_dict['tetra'])
+
