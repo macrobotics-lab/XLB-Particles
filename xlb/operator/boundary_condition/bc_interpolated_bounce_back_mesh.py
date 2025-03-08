@@ -40,7 +40,7 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
 
         # Call the parent constructor
         super().__init__(
-            ImplementationStep.STREAMING,
+            ImplementationStep.COLLISION,
             velocity_set,
             precision_policy,
             compute_backend,
@@ -106,10 +106,11 @@ class InterpolatedBounceBackMeshBC(BoundaryCondition):
                     f = int(0)          # hit face index
                     
                     wp.mesh_query_ray(mesh_id, start, dir, length,t,u,v,sign,n,f)
+                    t = t/length
                     f_post[l] = (
-                                2.0 * t/ (1.0 + 2.0 * t) * f_post[l]
-                                + 1.0 / (1.0 + 2.0 * t) * f_pre[_opp_indices[l]]
-                                #+ 6.0 / (1.0 + 2.0 * t)* _w[l]* wp.dot(wp.mesh_eval_velocity(mesh_id, f, u, v), dir)
+                                2.0 * t / (1.0 + 2.0 * t) * f_post[l]
+                                + 1.0 / (1.0 + 2.0 * t) * f_pre[_opp_indices[l]] # Bounce back
+                                + 6.0 / (1.0 + 2.0 * t)* _w[l]* wp.dot(wp.mesh_eval_velocity(mesh_id, f, u, v), dir)
                             )
 
             return f_post

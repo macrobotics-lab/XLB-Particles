@@ -33,6 +33,7 @@ class HalfwayBounceBackBC(BoundaryCondition):
         compute_backend: ComputeBackend = None,
         indices=None,
         mesh_vertices=None,
+        mesh_id=None
     ):
         # Call the parent constructor
         super().__init__(
@@ -43,6 +44,7 @@ class HalfwayBounceBackBC(BoundaryCondition):
             indices,
             mesh_vertices,
         )
+        self.mesh_id = mesh_id
 
         # This BC needs padding for finding missing directions when imposed on a geometry that is in the domain interior
         self.needs_padding = True

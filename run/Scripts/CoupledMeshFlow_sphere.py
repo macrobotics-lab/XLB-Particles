@@ -24,6 +24,7 @@ wp.clear_kernel_cache()
 # wp.config.verbose = True
 # wp.config.print_launches = True
 # wp.config.mode = "debug"
+# wp.config.verify_fp = True
 # wp.config.verify_cuda = True
 # Grid parameters
 grid_size_x, grid_size_y, grid_size_z = 512//2, 64, 64
@@ -33,19 +34,19 @@ grid_shape = (grid_size_x, grid_size_y, grid_size_z)
 compute_backend = ComputeBackend.WARP
 precision_policy = PrecisionPolicy.FP32FP32
 
-velocity_set = xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=compute_backend)
+velocity_set = xlb.velocity_set.D3Q19(precision_policy=precision_policy, compute_backend=compute_backend)
 wind_speed = 0.02
 num_steps = 100000
 print_interval = 1000
 post_process_interval = 1000
 
 # Physical Parameters
-Re = 500.0
-clength = grid_size_x - 1
-visc = wind_speed * clength / Re
+Re = 8
+clength = 8
+visc = 0.1
 omega = 1.0 / (3.0 * visc + 0.5)
 
-sim_dt = 3e-5
+sim_dt = 2e-5
 
 # Print simulation info
 print("\n" + "=" * 50 + "\n")
@@ -78,13 +79,14 @@ walls = [box["bottom"][i] + box["top"][i] + box["front"][i] + box["back"][i] for
 walls = np.unique(np.array(walls), axis=-1).tolist()
 
 # Create warp deformable shape 
-mesh = meshio.read('../Inputs/SphereGmsh.msh')
+mesh = meshio.read('../Inputs/Sphere_refined.msh')
 mesh_points = mesh.points
 mesh_indices = np.array(mesh.cells_dict['tetra'],dtype=int).ravel()
+mesh_triangles = np.array(mesh.cells_dict['triangle'],dtype=int)
 mesh_points -= mesh_points.min(axis=0)
 mesh_points = mesh_points*15.
 mesh_center = mesh_points.max(axis=0)
-shift = np.array([grid_shape[0] / 4, (grid_shape[1] - mesh_center[1]) / 2, (grid_shape[2] - mesh_center[2])/2])
+shift = np.array([grid_shape[0] // 5, (grid_shape[1] - mesh_center[1]) // 2, (grid_shape[2] - mesh_center[2])//2])
 
 builder = warp.sim.ModelBuilder(up_vector=(1., 0, 0),gravity=0.)
 builder.add_soft_mesh(
@@ -97,8 +99,10 @@ builder.add_soft_mesh(
             k_mu=50000.,
             k_lambda=20000.,
             k_damp=0.,
-            density=100.,
+            density=1.1,
         )
+#builder.add_triangles(mesh_triangles[:,0],mesh_triangles[:,1],mesh_triangles[:,2]) ## Adding surface triangles to soft mesh
+
 model = builder.finalize()
 integrator = warp.sim.SemiImplicitIntegrator()
 
@@ -108,13 +112,25 @@ state_1 = model.state()
 print(f"Initialized {state_0.body_count} Bodies")
 print(f"Initialized {state_0.particle_count} Particles")
 print(f"Initialized {model.tet_count} Tetrahedra")
+print(f"Initialized {model.tri_count} Triangles")
+
+#Deconstruct tet mesh into triangles 
+mesh_indices = np.array(mesh.cells_dict['tetra'],dtype=int)
+inner_indices = np.zeros((4*mesh_indices.shape[0],3),dtype=int)
+
+for i in range(4*mesh_indices.shape[0]): 
+    for j in range(4):
+        inner_indices[i] = np.roll(mesh_indices[i//4,:],j)[0:3]
+
+indices = wp.array(np.append(mesh_triangles,inner_indices,axis=0),dtype=int).flatten()
 
 
 def update_mesh(mesh, model,state):
     if mesh == None:
+        
         mesh = wp.Mesh(
             points=state.particle_q,
-            indices=model.tet_indices.flatten(),
+            indices= indices,
             velocities=state.particle_qd,
                 )
         return mesh
@@ -122,14 +138,16 @@ def update_mesh(mesh, model,state):
         mesh.points = state.particle_q
         mesh.velocities = state.particle_qd
         mesh.refit()
-    return mesh
+        return mesh
 
 mesh = update_mesh(None, model,state_0)
 
 bc_left = RegularizedBC("velocity", prescribed_value=(wind_speed, 0.0, 0.0), indices=inlet)
+#bc_left = ExtrapolationOutflowBC(indices=inlet)
 bc_walls = HalfwayBounceBackBC(indices=walls)
 bc_do_nothing = ExtrapolationOutflowBC(indices=outlet)
-bc_mesh = InterpolatedBounceBackMeshBC(mesh_vertices=1,mesh_id=mesh.id)
+#bc_mesh = InterpolatedBounceBackMeshBC(mesh_vertices=1,mesh_id=mesh.id)
+bc_mesh = HalfwayBounceBackBC(mesh_vertices=1,mesh_id=mesh.id)
 boundary_conditions_static = [bc_walls, bc_left, bc_do_nothing]
 boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_mesh]
 
@@ -137,7 +155,7 @@ boundary_conditions = [bc_walls, bc_left, bc_do_nothing, bc_mesh]
 stepper = IncompressibleNavierStokesStepper(
         grid=grid,
         boundary_conditions=boundary_conditions_static,
-        collision_type="KBC",
+        collision_type="BGK",
     )
 f_0, f_1, bc_mask_static, missing_mask_static = stepper.prepare_fields()
 
@@ -160,11 +178,11 @@ def update_dynamic_BC(mesh_masker, bc_mesh,bc_mask_static,missing_mask_static):
 bc_mask, missing_mask = update_dynamic_BC(mesh_masker, bc_mesh,bc_mask_static,missing_mask_static)
 
 @wp.kernel
-def interpolate_force(boundary_force : wp.array(dtype=wp.vec3,ndim=3), particle_q : wp.array(dtype=wp.vec3), force_interp: wp.array(dtype=wp.vec3)):
+def interpolate_force(boundary_force : wp.array(dtype=wp.vec3,ndim=3), particle_q : wp.array(dtype=wp.vec3), query_indices: wp.array(dtype=int), force_interp: wp.array(dtype=wp.vec3)):
 
     i= wp.tid()
 
-    pos = particle_q[i] # position of particle
+    pos = particle_q[query_indices[i]] # position of particle
     # Closest Particle Indices
     i_min = int(wp.floor(pos[0]))
     j_min = int(wp.floor(pos[1]))
@@ -188,7 +206,7 @@ def interpolate_force(boundary_force : wp.array(dtype=wp.vec3,ndim=3), particle_
     c_0=c00*(1.-y_d)+c10*y_d
     c_1=c01*(1.-y_d)+c11*y_d
 
-    force_interp[i] = c_0*(1.-z_d)+c_1*z_d
+    force_interp[query_indices[i]] = c_0*(1.-z_d)+c_1*z_d
 
 
 def compute_force(
@@ -198,20 +216,22 @@ def compute_force(
     missing_mask,
     bc_mask,
     state,
+    query_indices,
     force,
     force_interp,
 ):
+    force.zero_()
     force = momentum_transfer(f_0, f_1, bc_mask, missing_mask,force)
     # Write an interpolation scheme to convert the force from grid-based to point-based
     wp.launch(
         kernel = interpolate_force,
-        dim = state.particle_q.shape[0],
-        inputs = [force, state.particle_q, force_interp],
+        dim = query_indices.shape[0],
+        inputs = [force, state.particle_q, query_indices, force_interp],
     )
 
     return force, force_interp
     
-def render(renderer, step,f_0, grid_shape, macro,rho,u,force,force_interp,state_0):
+def render(renderer, step,f_0, grid_shape, macro,rho,u,force,force_interp,state_0,state_1,):
     # Compute macroscopic quantities
     _, u = macro(f_0,rho,u)
     # Remove boundary cells
@@ -222,10 +242,11 @@ def render(renderer, step,f_0, grid_shape, macro,rho,u,force,force_interp,state_
     u = u[:, 1:-1, 1:-1, 1:-1]
     force = np.moveaxis(force,-1,0)
     force = force[:,1:-1, 1:-1, 1:-1]
-    
 
-    print(f"Maximum Force from MEM : {np.max(force)}")
-    print(f"Mean Velocity of Mesh : {np.mean(force_interp)}")
+    print(f"Net Force from MEM : {np.sum(force,axis=(1,2,3))}")
+    print(f"Net Force from Interpolation : {np.sum(state_0.particle_f.numpy(),axis=0)}")
+    print(f"Mean Velocity of Mesh : {np.mean(force_interp,axis=0)}")
+    print(f"Change in Mean Particle Position: {np.mean(state_0.particle_q.numpy(),axis=0)-np.mean(state_1.particle_q.numpy(),axis=0)}")
 
     u_magnitude = np.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
     f_magnitude = np.sqrt(force[0] ** 2 + force[1] ** 2 + force[2] ** 2)
@@ -239,15 +260,16 @@ def render(renderer, step,f_0, grid_shape, macro,rho,u,force,force_interp,state_
     mid_y = grid_shape[1] // 2
     save_image(fields["u_magnitude"][:, mid_y, :], timestep=step)
 
-    renderer.begin_frame(step)
-    renderer.render(state_0)
-    renderer.end_frame()
+
+    # renderer.begin_frame(step)
+    # renderer.render(state_0)
+    # renderer.end_frame()
 
 # Define Macroscopic Calculation
 macro = Macroscopic(
     compute_backend=ComputeBackend.WARP,
     precision_policy=precision_policy,
-    velocity_set=xlb.velocity_set.D3Q27(precision_policy=precision_policy, compute_backend=ComputeBackend.WARP),
+    velocity_set=xlb.velocity_set.D3Q19(precision_policy=precision_policy, compute_backend=ComputeBackend.WARP),
 )
 
 # Initialize Lists to Store Coefficients and Time Steps
@@ -260,9 +282,10 @@ u = wp.zeros((3,grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.float32)
 force_interp = wp.zeros(state_0.particle_q.shape[0], dtype=wp.vec3)
 force = wp.zeros((grid_shape[0],grid_shape[1],grid_shape[2]),dtype=wp.vec3)
 momentum_transfer = MomentumTransfer(boundary_conditions[-1], compute_backend=ComputeBackend.WARP,force=force)
-renderer = warp.sim.render.SimRendererOpenGL(model,'./', )
-
+renderer = None #warp.sim.render.SimRendererOpenGL(model,'./', )
+query_indices = wp.array(mesh_triangles.flatten(),dtype=int)
 # -------------------------- Simulation Loop --------------------------
+dx = 0
 
 start_time = time.time()
 for step in range(num_steps):
@@ -272,29 +295,29 @@ for step in range(num_steps):
 
     # Compute the force
     state_0.clear_forces()
-    force, force_interp = compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0,force,force_interp)
+    force.zero_()
+    force, force_interp = compute_force(f_0, f_1, momentum_transfer, missing_mask, bc_mask, state_0,query_indices,force,force_interp)
     state_0.particle_f = force_interp
 
-    # # Integrate Solid 
+    # Integrate Solid 
 
-    integrator.simulate(model, state_0, state_1,sim_dt)
+    #integrator.simulate(model, state_0, state_1,sim_dt)
 
     # Swap States
-    state_0, state_1 = state_1, state_0
+    #state_0, state_1 = state_1, state_0
 
-    # Update Mesh
+    #mesh = update_mesh(mesh,model,state_0)
+    dx=0
     
-    mesh = update_mesh(mesh,model,state_0)
- 
-    # Update Fluid Simulation
-    bc_mesh.mesh_vertices =1
-    bc_mesh.mesh_id = mesh.id
+        # Update Fluid Simulation
+    #bc_mesh.mesh_vertices =1
+    #bc_mesh.mesh_id = mesh.id
 
-    # Update Fields
-    bc_mask, missing_mask = update_dynamic_BC(mesh_masker, bc_mesh,bc_mask_static,missing_mask_static)
+        # Update Fields
+    #bc_mask, missing_mask = update_dynamic_BC(mesh_masker, bc_mesh,bc_mask_static,missing_mask_static)
 
-    # Update Momentum Transfer for Force Calculation
-    momentum_transfer.no_slip_bc_instance = bc_mesh
+        # Update Momentum Transfer for Force Calculation
+    #momentum_transfer.no_slip_bc_instance = bc_mesh
 
     # Print progress at intervals
     if step % print_interval == 0:
@@ -316,7 +339,8 @@ for step in range(num_steps):
             u,
             force,
             state_0.particle_qd,
-            state_0
+            state_0,
+            state_1,
         )
 
 

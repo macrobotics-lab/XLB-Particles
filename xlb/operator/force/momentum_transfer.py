@@ -99,6 +99,7 @@ class MomentumTransfer(Operator):
         _u_vec = wp.vec(self.velocity_set.d, dtype=self.compute_dtype)
         _missing_mask_vec = wp.vec(self.velocity_set.q, dtype=wp.uint8)  # TODO fix vec bool
         _no_slip_id = self.no_slip_bc_instance.id
+        self.force.zero_()
         force = self.force
 
         # Find velocity index for 0, 0, 0
@@ -154,7 +155,7 @@ class MomentumTransfer(Operator):
                     m[d] = self.compute_dtype(0.0)
                     for l in range(self.velocity_set.q):
                         if _missing_mask[l] == wp.uint8(1):
-                            phi = f_post_collision[_opp_indices[l]] + f_post_stream[l]
+                            phi = f_post_collision[_opp_indices[l]] + f_post_stream[l] # Sketchy change based on my notes but not in the original repo. Maybe should double check and talk to someone? 
                             if _c[d, _opp_indices[l]] == 1:
                                 m[d] += phi
                             elif _c[d, _opp_indices[l]] == -1:

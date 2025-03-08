@@ -168,6 +168,7 @@ class MeshBoundaryMasker(Operator):
             pos_bc_cell = index_to_position(index)
             half = wp.vec3(0.5, 0.5, 0.5)
 
+
             if mesh_voxel_intersect(mesh_id=mesh_id, low=pos_bc_cell - half):
                 # Make solid voxel
                 bc_mask[0, index[0], index[1], index[2]] = wp.uint8(255)
@@ -178,10 +179,18 @@ class MeshBoundaryMasker(Operator):
 
                     # Check to see if this neighbor is liquid
                     if not mesh_voxel_intersect(mesh_id=mesh_id, low=pos_bc_cell + _dir - half):
-                        # We know we have a solid neighbor
-                        # Set the boundary id and missing_mask
-                        bc_mask[0, push_index[0], push_index[1], push_index[2]] = wp.uint8(id_number)
-                        missing_mask[l, push_index[0], push_index[1], push_index[2]] = True
+                        # Check to see if inside mesh
+                        # sign = wp.float32(0.0)
+                        # face = wp.int32(0)
+                        # u = wp.float32(0.0)
+                        # v = wp.float32(0.0)
+
+                        # wp.mesh_query_point(mesh_id, pos_bc_cell,40.0, sign, face,u,v) # this is a hack 
+                        # if sign <0: # if inside mesh 
+                        #     bc_mask[0, push_index[0], push_index[1], push_index[2]] = wp.uint8(255)
+                        # if sign >0: # if outside mesh
+                            bc_mask[0, push_index[0], push_index[1], push_index[2]] = wp.uint8(id_number)
+                            missing_mask[l, push_index[0], push_index[1], push_index[2]] = True
 
             # if mesh_voxel_intersect(mesh_id=mesh_id, low=pos_bc_cell - half):
             #     # Make solid voxel
